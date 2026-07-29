@@ -1,0 +1,28 @@
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+
+# Python Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+
+# Caches & Byte-code (Rutin berubah)
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# IDE & Code Editors Configuration
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local Uploads / Temporary Media (Jika Ada)
+uploads/
+*.log
