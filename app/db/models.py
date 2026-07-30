@@ -67,7 +67,16 @@ class StreetPhoto(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     mission_id = Column(UUID(as_uuid=True), ForeignKey("survey_missions.id"))
     uploaded_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    source = Column(ENUM(PhotoSource, name="photo_source", create_type=False), nullable=False)
+    # source = Column(ENUM(PhotoSource, name="photo_source", create_type=False), nullable=False)
+    source = Column(
+        ENUM(
+            PhotoSource, 
+            name="photo_source", 
+            create_type=False,
+            values_callable=lambda obj: [e.value for e in obj]
+        ), 
+        nullable=False
+    )
     original_filename = Column(String(255))
     file_path = Column(String(500), nullable=False)
     file_size_kb = Column(Integer)
@@ -80,7 +89,16 @@ class StreetPhoto(Base):
     is_manual_capture = Column(Boolean, default=False)
     is_offline_sync = Column(Boolean, default=False)
     privacy_masked = Column(Boolean, default=False)
-    processing_status = Column(ENUM(ProcessingStatus, name="processing_status", create_type=False), default=ProcessingStatus.QUEUED)
+    # processing_status = Column(ENUM(ProcessingStatus, name="processing_status", create_type=False), default=ProcessingStatus.QUEUED)
+    processing_status = Column(
+        ENUM(
+            ProcessingStatus, 
+            name="processing_status", 
+            create_type=False,
+            values_callable=lambda obj: [e.value for e in obj]
+        ), 
+        default=ProcessingStatus.QUEUED
+    )
     error_message = Column(Text)
     captured_at = Column(DateTime(timezone=True), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

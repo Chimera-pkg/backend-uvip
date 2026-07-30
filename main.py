@@ -1,4 +1,6 @@
+import os
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from app.routers import (
     auth, users, corridors, survey_missions, mission_assignments,
     street_photos, segmentation_results, perception_predictions,
@@ -11,6 +13,12 @@ app = FastAPI(
     title="UVIP - Urban Visual Perception API",
     version="1.0.0"
 )
+
+# Buat folder uploads jika belum ada
+os.makedirs("uploads/photos", exist_ok=True)
+
+# Mount folder static uploads
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # registrasi router auth (1 public endpoint)
 app.include_router(auth.router)
