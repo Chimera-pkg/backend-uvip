@@ -1,10 +1,12 @@
 from pydantic import BaseModel
 from uuid import UUID
 from datetime import datetime
+from typing import Optional
 
 class MissionAssignmentCreate(BaseModel):
     mission_id: UUID
     user_id: UUID
+    assigned_at: Optional[datetime] = None
 
 class MissionAssignmentUpdate(BaseModel):
     mission_id: UUID

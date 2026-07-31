@@ -26,7 +26,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
-
+from geoalchemy2 import WKTElement
+from app.db.enums import UserRole
 from app.db.database import get_db
 from app.db.models import Corridor, User
 from app.schemas.corridor import CorridorCreate, CorridorResponse, CorridorUpdate
@@ -37,6 +38,18 @@ router = APIRouter(prefix="/corridors", tags=["Corridors"])
 # 1. CREATE
 @router.post("/", response_model=CorridorResponse, status_code=status.HTTP_201_CREATED)
 def create_corridor(data: CorridorCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    allowed_roles = [UserRole.ADMIN, UserRole.PLANNER]
+    if current_user.role not in allowed_roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Akses ditolak! Hanya Admin dan Planner yang dapat membuat koridor baru."
+        )
+
+    corridor_data = data.model_dump()
+    
+    if corridor_data.get("geom"):
+        corridor_data["geom"] = WKTElement(corridor_data["geom"], srid=4326)
+
     corridor = Corridor(**data.model_dump(), created_by=current_user.id)
     db.add(corridor)
     db.commit()

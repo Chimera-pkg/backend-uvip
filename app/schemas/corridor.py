@@ -17,6 +17,7 @@ class CorridorUpdate(BaseModel):
     district: Optional[str] = None
     length_km: Optional[float] = None
     description: Optional[str] = None
+    geom: Optional[str] = None
 
 class CorridorResponse(BaseModel):
     id: UUID

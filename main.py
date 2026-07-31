@@ -14,10 +14,8 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Buat folder uploads jika belum ada
+# create folder upload bos lek gorong ono
 os.makedirs("uploads/photos", exist_ok=True)
-
-# Mount folder static uploads
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # registrasi router auth (1 public endpoint)

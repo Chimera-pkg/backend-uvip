@@ -83,3 +83,70 @@ def delete_user(user_id: UUID, db: Session = Depends(get_db), current_user: User
     db.delete(user)
     db.commit()
     return None
+
+
+# ADMIN ONLY: Deaktivasi Account User (is_active = False)
+@router.patch("/{user_id}/deactivate", response_model=UserResponse)
+def deactivate_user(
+    user_id: UUID, 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role.value != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Akses ditolak! Hanya Admin yang dapat menonaktifkan akun user."
+        )
+
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="User tidak ditemukan"
+        )
+
+    if target_user.id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Admin tidak dapat menonaktifkan akunnya sendiri yang sedang aktif."
+        )
+
+    target_user.is_active = False
+    
+    db.commit()
+    db.refresh(target_user)
+    
+    return target_user
+
+# ADMIN ONLY: Aktivasi Account User (is_active = True)
+@router.patch("/{user_id}/activate", response_model=UserResponse)
+def activate_user(
+    user_id: UUID, 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role.value != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Akses ditolak! Hanya Admin yang dapat mengaktifkan akun user."
+        )
+
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="User tidak ditemukan"
+        )
+
+    if target_user.id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Admin tidak dapat mengaktifkan akunnya sendiri yang sedang aktif."
+        )
+
+    target_user.is_active = True
+    
+    db.commit()
+    db.refresh(target_user)
+    
+    return target_user

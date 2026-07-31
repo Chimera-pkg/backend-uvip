@@ -48,7 +48,16 @@ class SurveyMission(Base):
     description = Column(Text)
     corridor_id = Column(UUID(as_uuid=True), ForeignKey("corridors.id"))
     created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    status = Column(ENUM(MissionStatus, name="mission_status", create_type=False), default=MissionStatus.ACTIVE)
+    # status = Column(ENUM(MissionStatus, name="mission_status", create_type=False), default=MissionStatus.ACTIVE)
+    status = Column(
+        ENUM(
+            MissionStatus, 
+            name="mission_status", 
+            create_type=False,
+            values_callable=lambda obj: [e.value for e in obj]
+        ), 
+        default=MissionStatus.ACTIVE
+    )
     target_photo_count = Column(Integer)
     started_at = Column(DateTime(timezone=True))
     completed_at = Column(DateTime(timezone=True))
@@ -145,7 +154,16 @@ class ShapValue(Base):
     __tablename__ = "shap_values"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     prediction_id = Column(UUID(as_uuid=True), ForeignKey("perception_predictions.id"), nullable=False)
-    target_indicator = Column(ENUM(TargetIndicator, name="target_indicator", create_type=False), nullable=False)
+    # target_indicator = Column(ENUM(TargetIndicator, name="target_indicator", create_type=False), nullable=False)
+    target_indicator = Column(
+        ENUM(
+            TargetIndicator, 
+            name="target_indicator", 
+            create_type=False,
+            values_callable=lambda obj: [e.value for e in obj]
+        ), 
+        nullable=False
+    )
     feature_name = Column(String(100), nullable=False)
     display_label = Column(String(200))
     shap_value = Column(Numeric(8, 4), nullable=False)
@@ -171,7 +189,16 @@ class SimulationResult(Base):
     __tablename__ = "simulation_results"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     session_id = Column(UUID(as_uuid=True), ForeignKey("simulation_sessions.id"), nullable=False)
-    indicator = Column(ENUM(SimulationIndicator, name="simulation_indicator", create_type=False), nullable=False)
+    # indicator = Column(ENUM(SimulationIndicator, name="simulation_indicator", create_type=False), nullable=False)
+    indicator = Column(
+        ENUM(
+            SimulationIndicator, 
+            name="simulation_indicator", 
+            create_type=False,
+            values_callable=lambda obj: [e.value for e in obj]
+        ), 
+        nullable=False
+    )
     score_before = Column(Numeric(4, 2), nullable=False)
     score_after = Column(Numeric(4, 2), nullable=False)
     score_delta = Column(Numeric(5, 2))
@@ -187,7 +214,16 @@ class PolicyRecommendation(Base):
     actual_score = Column(Numeric(4, 2))
     recommendation_type = Column(String(50))
     recommendation_text = Column(Text, nullable=False)
-    priority = Column(ENUM(PolicyPriority, name="policy_priority", create_type=False), default=PolicyPriority.MEDIUM)
+    # priority = Column(ENUM(PolicyPriority, name="policy_priority", create_type=False), default=PolicyPriority.MEDIUM)
+    priority = Column(
+        ENUM(
+            PolicyPriority, 
+            name="policy_priority", 
+            create_type=False,
+            values_callable=lambda obj: [e.value for e in obj]
+        ), 
+        default=PolicyPriority.MEDIUM
+    )
     is_auto_generated = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -204,7 +240,16 @@ class OfflineSyncQueue(Base):
     compass_azimuth = Column(Numeric(6, 2))
     is_manual_capture = Column(Boolean, default=False)
     captured_at = Column(DateTime(timezone=True), nullable=False)
-    sync_status = Column(ENUM(SyncStatus, name="sync_status", create_type=False), default=SyncStatus.PENDING)
+    # sync_status = Column(ENUM(SyncStatus, name="sync_status", create_type=False), default=SyncStatus.PENDING)
+    sync_status = Column(
+        ENUM(
+            SyncStatus, 
+            name="sync_status", 
+            create_type=False,
+            values_callable=lambda obj: [e.value for e in obj]
+        ), 
+        default=SyncStatus.PENDING
+    )
     retry_count = Column(Integer, default=0)
     last_retry_at = Column(DateTime(timezone=True))
     synced_photo_id = Column(UUID(as_uuid=True), ForeignKey("street_photos.id"))
@@ -222,7 +267,16 @@ class BatchUploadJob(Base):
     total_photos = Column(Integer, default=0)
     processed_photos = Column(Integer, default=0)
     failed_photos = Column(Integer, default=0)
-    status = Column(ENUM(BatchJobStatus, name="batch_job_status", create_type=False), default=BatchJobStatus.QUEUED)
+    # status = Column(ENUM(BatchJobStatus, name="batch_job_status", create_type=False), default=BatchJobStatus.QUEUED)
+    status = Column(
+        ENUM(
+            BatchJobStatus, 
+            name="batch_job_status", 
+            create_type=False,
+            values_callable=lambda obj: [e.value for e in obj]
+        ), 
+        default=BatchJobStatus.QUEUED
+    )
     started_at = Column(DateTime(timezone=True))
     completed_at = Column(DateTime(timezone=True))
     error_log = Column(Text)
@@ -232,7 +286,16 @@ class ModelRegistry(Base):
     __tablename__ = "model_registry"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     model_name = Column(String(100), nullable=False)
-    model_type = Column(ENUM(ModelType, name="model_type", create_type=False), nullable=False)
+    # model_type = Column(ENUM(ModelType, name="model_type", create_type=False), nullable=False)
+    model_type = Column(
+        ENUM(
+            ModelType, 
+            name="model_type", 
+            create_type=False,
+            values_callable=lambda obj: [e.value for e in obj]
+        ), 
+        nullable=False
+    )
     version_tag = Column(String(50))
     description = Column(Text)
     r2_score = Column(Numeric(5, 4))
