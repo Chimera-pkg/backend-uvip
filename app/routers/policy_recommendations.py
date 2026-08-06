@@ -4,7 +4,7 @@ from typing import List
 from uuid import UUID
 
 from app.db.database import get_db
-from app.db.models import PolicyRecommendation, User
+from app.db.models import PolicyRecommendation, User, SimulationSession
 from app.schemas.policy_recommendation import PolicyRecommendationCreate, PolicyRecommendationResponse, PolicyRecommendationUpdate
 from app.routers.auth import get_current_user
 
@@ -12,6 +12,13 @@ router = APIRouter(prefix="/policy-recommendations", tags=["Policy Recommendatio
 
 @router.post("/", response_model=PolicyRecommendationResponse, status_code=status.HTTP_201_CREATED)
 def create_recommendation(data: PolicyRecommendationCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    simulation_session = db.query(SimulationSession).filter(SimulationSession.id == data.session_id).first()
+    if not simulation_session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Simulasi Sesi dengan ID '{data.session_id}' tidak ditemukan."
+        )
+
     recommendation = PolicyRecommendation(**data.model_dump())
     db.add(recommendation)
     db.commit()

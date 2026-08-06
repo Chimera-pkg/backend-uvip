@@ -4,18 +4,37 @@ from typing import List
 from uuid import UUID
 
 from app.db.database import get_db
-from app.db.models import ShapValue, User
+from app.db.models import ShapValue, User, PerceptionPrediction
 from app.schemas.shap_value import ShapValueCreate, ShapValueResponse, ShapValueUpdate
 from app.routers.auth import get_current_user
 
 router = APIRouter(prefix="/shap-values", tags=["SHAP Values"])
 
+# @router.post("/", response_model=ShapValueResponse, status_code=status.HTTP_201_CREATED)
+# def create_shap_value(data: ShapValueCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+#     shap_val = ShapValue(**data.model_dump())
+#     db.add(shap_val)
+#     db.commit()
+#     db.refresh(shap_val)
+#     return shap_val
+
 @router.post("/", response_model=ShapValueResponse, status_code=status.HTTP_201_CREATED)
 def create_shap_value(data: ShapValueCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    prediction = db.query(PerceptionPrediction).filter(
+        PerceptionPrediction.id == data.prediction_id
+    ).first()
+    
+    if not prediction:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Perception Prediction dengan ID '{data.prediction_id}' tidak ditemukan."
+        )
+
     shap_val = ShapValue(**data.model_dump())
     db.add(shap_val)
     db.commit()
     db.refresh(shap_val)
+    
     return shap_val
 
 @router.get("/", response_model=List[ShapValueResponse])

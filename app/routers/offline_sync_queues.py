@@ -3,19 +3,62 @@ from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
 
+from app.db.enums import UserRole, MissionStatus
 from app.db.database import get_db
-from app.db.models import OfflineSyncQueue, User
+from app.db.models import OfflineSyncQueue, User, StreetPhoto, SurveyMission
 from app.schemas.offline_sync_queue import OfflineSyncQueueCreate, OfflineSyncQueueResponse, OfflineSyncQueueUpdate
 from app.routers.auth import get_current_user
 
 router = APIRouter(prefix="/offline-sync-queues", tags=["Offline Sync Queue"])
 
+# @router.post("/", response_model=OfflineSyncQueueResponse, status_code=status.HTTP_201_CREATED)
+# def create_sync_queue(data: OfflineSyncQueueCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+#     queue_item = OfflineSyncQueue(**data.model_dump(), user_id=current_user.id)
+#     db.add(queue_item)
+#     db.commit()
+#     db.refresh(queue_item)
+#     return queue_item
+
 @router.post("/", response_model=OfflineSyncQueueResponse, status_code=status.HTTP_201_CREATED)
-def create_sync_queue(data: OfflineSyncQueueCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def create_sync_queue(
+    data: OfflineSyncQueueCreate, 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
+    allowed_roles = [UserRole.SURVEYOR, UserRole.ADMIN]
+    if current_user.role not in allowed_roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Akses ditolak! Hanya Surveyor yang dapat membuat antrean sinkronisasi offline."
+        )
+
+    if data.mission_id:
+        mission = db.query(SurveyMission).filter(SurveyMission.id == data.mission_id).first()
+        if not mission:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Survey Mission dengan ID '{data.mission_id}' tidak ditemukan."
+            )
+        
+        # if mission.status == MissionStatus.COMPLETED:
+        #     raise HTTPException(
+        #         status_code=status.HTTP_400_BAD_REQUEST,
+        #         detail="Tidak dapat menambahkan antrean foto untuk misi yang sudah selesai (COMPLETED)."
+        #     )
+
+    if data.synced_photo_id:
+        photo = db.query(StreetPhoto).filter(StreetPhoto.id == data.synced_photo_id).first()
+        if not photo:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Foto tersinkronisasi dengan ID '{data.synced_photo_id}' tidak ditemukan."
+            )
+
     queue_item = OfflineSyncQueue(**data.model_dump(), user_id=current_user.id)
     db.add(queue_item)
     db.commit()
     db.refresh(queue_item)
+    
     return queue_item
 
 @router.get("/", response_model=List[OfflineSyncQueueResponse])

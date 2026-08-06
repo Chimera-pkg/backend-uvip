@@ -4,7 +4,7 @@ from typing import List
 from uuid import UUID
 
 from app.db.database import get_db
-from app.db.models import BatchUploadJob, User
+from app.db.models import BatchUploadJob, User, SurveyMission
 from app.schemas.batch_upload_job import BatchUploadJobCreate, BatchUploadJobResponse, BatchUploadJobUpdate
 from app.routers.auth import get_current_user
 
@@ -12,6 +12,13 @@ router = APIRouter(prefix="/batch-upload-jobs", tags=["Batch Upload Jobs"])
 
 @router.post("/", response_model=BatchUploadJobResponse, status_code=status.HTTP_201_CREATED)
 def create_batch_job(data: BatchUploadJobCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    mission = db.query(SurveyMission).filter(SurveyMission.id == data.mission_id).first()
+    if not mission:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Survey Mission dengan ID '{data.mission_id}' tidak ditemukan."
+        )
+
     job = BatchUploadJob(**data.model_dump(), created_by=current_user.id)
     db.add(job)
     db.commit()
