@@ -22,6 +22,7 @@ class SegmentationResultCreate(BaseModel):
     visual_clutter_index: Optional[float] = None
     mask_file_path: Optional[str] = None
     inference_time_ms: Optional[int] = None
+    seluruh_percentage: Optional[float] = None
 
 class SegmentationResultUpdate(BaseModel):
     photo_id: Optional[UUID] = None

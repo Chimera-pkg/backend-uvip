@@ -133,6 +133,7 @@ class SegmentationResult(Base):
     visual_clutter_index = Column(Numeric(5, 4))
     mask_file_path = Column(String(500))
     inference_time_ms = Column(Integer)
+    seluruh_percentage = Column(Numeric(5, 2))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class PerceptionPrediction(Base):
