@@ -1,6 +1,7 @@
 import os
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from app.routers import (
     auth, users, corridors, survey_missions, mission_assignments,
     street_photos, segmentation_results, perception_predictions,
@@ -17,6 +18,11 @@ app = FastAPI(
 # create folder upload bos lek gorong ono
 os.makedirs("uploads/photos", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
+# custom API documentation page
+@app.get("/api-docs", include_in_schema=False)
+def api_docs():
+    return FileResponse("static/api-docs.html")
 
 # registrasi router auth (1 public endpoint)
 app.include_router(auth.router)

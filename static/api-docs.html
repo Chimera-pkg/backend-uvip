@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UVIP API Documentation</title>
+<style>
+  :root{
+    --bg:#0f1117; --bg-alt:#161923; --panel:#1c2030; --border:#2a2f42;
+    --text:#e6e9f0; --muted:#9aa3b8; --accent:#4f8cff; --accent-soft:#1e2a44;
+    --get:#22c55e; --post:#3b82f6; --put:#f59e0b; --patch:#a855f7; --delete:#ef4444;
+    --code-bg:#12151f; --green:#7ee787; --str:#a5d6ff; --key:#79c0ff; --num:#f8c471;
+    --radius:10px; --sidebar-w:290px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--text);line-height:1.6;font-size:15px;
+  }
+  a{color:var(--accent);text-decoration:none}
+  code{font-family:"SF Mono",Menlo,Consolas,"Courier New",monospace;font-size:.86em}
+
+  /* Layout */
+  .layout{display:flex;min-height:100vh}
+  .sidebar{
+    width:var(--sidebar-w);flex-shrink:0;background:var(--bg-alt);
+    border-right:1px solid var(--border);position:fixed;top:0;left:0;bottom:0;
+    overflow-y:auto;padding:0 0 40px;
+  }
+  .content{margin-left:var(--sidebar-w);flex:1;padding:48px 56px;max-width:1000px}
+
+  /* Sidebar */
+  .brand{padding:22px 24px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-alt);z-index:5}
+  .brand h1{font-size:18px;letter-spacing:.3px}
+  .brand .badge{display:inline-block;margin-top:6px;font-size:11px;color:var(--muted);
+    background:var(--panel);padding:2px 8px;border-radius:20px;border:1px solid var(--border)}
+  .search{padding:14px 18px}
+  .search input{
+    width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);
+    padding:9px 12px;border-radius:8px;font-size:13px;outline:none;
+  }
+  .search input:focus{border-color:var(--accent)}
+  .nav{padding:4px 10px}
+  .nav-group{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);
+    padding:16px 14px 6px;font-weight:600}
+  .nav a{
+    display:flex;align-items:center;gap:8px;padding:6px 14px;border-radius:7px;
+    color:var(--text);font-size:13.5px;transition:background .12s;
+  }
+  .nav a:hover{background:var(--panel)}
+  .nav a.active{background:var(--accent-soft);color:#fff}
+  .nav a .m{font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;color:#fff;min-width:34px;text-align:center}
+
+  /* Method chips */
+  .m.get,.method.get{background:var(--get)}
+  .m.post,.method.post{background:var(--post)}
+  .m.put,.method.put{background:var(--put)}
+  .m.patch,.method.patch{background:var(--patch)}
+  .m.delete,.method.delete{background:var(--delete)}
+
+  /* Content */
+  .hero{margin-bottom:40px}
+  .hero h2{font-size:30px;margin-bottom:10px}
+  .hero p{color:var(--muted);max-width:70ch}
+  .meta-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:22px}
+  .meta-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px}
+  .meta-card .label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  .meta-card .val{margin-top:4px;font-size:14px}
+  .meta-card .val code{color:var(--green)}
+
+  section{margin-bottom:56px;padding-top:20px;border-top:1px solid var(--border)}
+  section:first-of-type{border-top:none}
+  h3.res-title{font-size:23px;margin-bottom:6px;display:flex;align-items:center;gap:10px}
+  .res-desc{color:var(--muted);margin-bottom:8px}
+  .prefix-tag{font-size:12px;color:var(--muted);background:var(--panel);border:1px solid var(--border);
+    padding:2px 9px;border-radius:6px;font-family:monospace}
+
+  /* Endpoint */
+  .endpoint{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+    margin-top:16px;overflow:hidden}
+  .ep-head{display:flex;align-items:center;gap:12px;padding:13px 16px;cursor:pointer;user-select:none}
+  .ep-head:hover{background:var(--bg-alt)}
+  .method{font-size:11px;font-weight:700;color:#fff;padding:4px 10px;border-radius:6px;min-width:62px;text-align:center;letter-spacing:.03em}
+  .ep-path{font-family:monospace;font-size:14px;font-weight:600}
+  .ep-summary{color:var(--muted);font-size:13px;margin-left:auto;text-align:right}
+  .ep-auth{font-size:10px;padding:2px 7px;border-radius:20px;border:1px solid var(--border);color:var(--muted)}
+  .ep-auth.pub{color:var(--get);border-color:var(--get)}
+  .ep-body{display:none;padding:4px 16px 18px;border-top:1px solid var(--border)}
+  .endpoint.open .ep-body{display:block}
+  .ep-body h4{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:16px 0 8px}
+  .chev{color:var(--muted);transition:transform .15s}
+  .endpoint.open .chev{transform:rotate(90deg)}
+
+  /* Tables */
+  table{width:100%;border-collapse:collapse;margin:6px 0;font-size:13.5px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+  td code{background:var(--code-bg);padding:2px 6px;border-radius:5px;color:var(--green)}
+  .req-yes{color:var(--delete);font-weight:600}
+  .req-no{color:var(--muted)}
+
+  /* Code blocks */
+  pre{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;
+    overflow-x:auto;margin:6px 0;position:relative}
+  pre code{color:var(--text);font-size:13px;line-height:1.5;white-space:pre}
+  .tok-key{color:var(--key)} .tok-str{color:var(--str)} .tok-num{color:var(--num)}
+  .tok-bool{color:#ff7b72} .tok-null{color:#ff7b72} .tok-punc{color:var(--muted)}
+  .copy-btn{position:absolute;top:8px;right:8px;background:var(--panel);border:1px solid var(--border);
+    color:var(--muted);font-size:11px;padding:3px 9px;border-radius:6px;cursor:pointer}
+  .copy-btn:hover{color:var(--text);border-color:var(--accent)}
+
+  .status-row{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}
+  .status{font-size:12px;font-family:monospace;padding:3px 9px;border-radius:6px;border:1px solid var(--border)}
+  .status.s2{color:var(--get);border-color:var(--get)}
+  .status.s4{color:var(--put);border-color:var(--put)}
+  .status.s5{color:var(--delete);border-color:var(--delete)}
+
+  .callout{background:var(--accent-soft);border:1px solid #2d4a7a;border-left:3px solid var(--accent);
+    border-radius:8px;padding:12px 16px;margin:14px 0;font-size:13.5px}
+  .callout.warn{background:#3a2a12;border-color:#7a5a2d;border-left-color:var(--put)}
+
+  .enum-chip{display:inline-block;background:var(--code-bg);border:1px solid var(--border);
+    color:var(--green);padding:2px 8px;border-radius:6px;font-family:monospace;font-size:12px;margin:2px}
+
+  .steps{counter-reset:step;list-style:none;padding:0}
+  .steps li{position:relative;padding:8px 0 8px 42px;border-bottom:1px solid var(--border)}
+  .steps li::before{counter-increment:step;content:counter(step);position:absolute;left:0;top:8px;
+    width:28px;height:28px;background:var(--accent-soft);border:1px solid var(--accent);border-radius:50%;
+    display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff}
+
+  .toggle-mobile{display:none}
+  @media(max-width:900px){
+    .sidebar{transform:translateX(-100%);transition:transform .2s;z-index:50}
+    .sidebar.show{transform:none}
+    .content{margin-left:0;padding:24px 20px}
+    .toggle-mobile{display:flex;position:fixed;top:14px;right:14px;z-index:60;background:var(--accent);
+      color:#fff;border:none;padding:10px 14px;border-radius:8px;font-size:14px;cursor:pointer}
+  }
+  .hidden{display:none !important}
+</style>
+</head>
+<body>
+<button class="toggle-mobile" onclick="document.querySelector('.sidebar').classList.toggle('show')">☰ Menu</button>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">
+      <h1>UVIP API</h1>
+      <span class="badge">v1.0.0 · Urban Visual Perception</span>
+    </div>
+    <div class="search"><input id="search" type="text" placeholder="Cari endpoint… (mis. photo)"></div>
+    <nav class="nav" id="nav"></nav>
+  </aside>
+
+  <main class="content">
+    <div class="hero">
+      <h2>UVIP — Urban Visual Perception API</h2>
+      <p>Dokumentasi lengkap REST API untuk survei persepsi visual perkotaan: manajemen koridor, misi survei, foto street-level, hasil segmentasi & prediksi persepsi, simulasi skenario, hingga rekomendasi kebijakan.</p>
+      <div class="meta-grid">
+        <div class="meta-card"><div class="label">Base URL</div><div class="val"><code>http://127.0.0.1:8000</code></div></div>
+        <div class="meta-card"><div class="label">Autentikasi</div><div class="val">JWT Bearer Token</div></div>
+        <div class="meta-card"><div class="label">Format</div><div class="val">JSON · multipart (upload)</div></div>
+        <div class="meta-card"><div class="label">Swagger / ReDoc</div><div class="val"><a href="/docs">/docs</a> · <a href="/redoc">/redoc</a></div></div>
+      </div>
+      <div class="callout">🔑 Sertakan header <code>Authorization: Bearer &lt;access_token&gt;</code> pada semua endpoint <b>kecuali</b> <code>POST /auth/register</code> &amp; <code>POST /auth/login</code>.</div>
+    </div>
+    <div id="doc"></div>
+  </main>
+</div>
+
+<script>
+// ---------- DATA MODEL ----------
+const RESOURCES = [
+  {
+    id:"auth", group:"Umum", title:"Authentication", prefix:"/auth",
+    desc:"Registrasi & login. Menghasilkan JWT untuk mengakses endpoint terproteksi.",
+    endpoints:[
+      { method:"POST", path:"/auth/register", auth:false, summary:"Registrasi user baru", status:[["201","Created"],["400","Email sudah terdaftar!"]],
+        req:{name:"Andi Prasetyo",email:"andi.surveyor@uvip.id",password:"rahasia123",role:"surveyor"},
+        res:{id:"3f1a9c2e-7b44-4e21-9d33-2a1b6c5e8f01",name:"Andi Prasetyo",email:"andi.surveyor@uvip.id",role:"surveyor",is_active:true,created_at:"2026-08-04T09:12:00+07:00"} },
+      { method:"POST", path:"/auth/login", auth:false, summary:"Login → JWT", status:[["200","OK"],["401","Email atau password salah!"],["403","Akun tidak aktif."]],
+        req:{email:"andi.surveyor@uvip.id",password:"rahasia123"},
+        res:{access_token:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",token_type:"bearer"} }
+    ]
+  },
+  {
+    id:"users", group:"Pengguna & Akses", title:"Users", prefix:"/users",
+    desc:"Manajemen data pengguna. Aktivasi akun hanya oleh Admin.",
+    endpoints:[
+      { method:"GET", path:"/users/", auth:true, summary:"Daftar semua user", status:[["200","OK"]] },
+      { method:"GET", path:"/users/{user_id}", auth:true, summary:"Detail user", status:[["200","OK"],["404","User tidak ditemukan"]] },
+      { method:"PUT", path:"/users/{user_id}", auth:true, summary:"Ubah user", status:[["200","OK"]],
+        req:{name:"Andi Prasetyo, S.T.",role:"planner",is_active:true} },
+      { method:"PATCH", path:"/users/{user_id}/activate", auth:true, summary:"Aktivasi akun (Admin only)", status:[["200","OK"],["403","Hanya Admin yang dapat mengaktifkan akun."],["400","Admin tidak dapat mengaktifkan akunnya sendiri."]] }
+    ]
+  },
+  {
+    id:"corridors", group:"Survei", title:"Corridors", prefix:"/corridors",
+    desc:"Koridor jalan (LINESTRING SRID 4326). Membuat koridor hanya untuk Admin/Planner.",
+    endpoints:[
+      { method:"POST", path:"/corridors/", auth:true, summary:"Buat koridor (Admin/Planner)", status:[["201","Created"],["403","Hanya Admin dan Planner yang dapat membuat koridor."]],
+        req:{name:"Koridor Jalan Ijen",city:"MALANG",district:"Klojen",length_km:1.85,description:"Boulevard bersejarah dengan pepohonan palem.",geom:"LINESTRING(112.6280 -7.9720, 112.6305 -7.9698, 112.6326 -7.9666)"},
+        res:{id:"b2c4d6e8-1111-4a2b-8c3d-4e5f6a7b8c9d",name:"Koridor Jalan Ijen",city:"MALANG",district:"Klojen",length_km:1.85,description:"Boulevard bersejarah dengan pepohonan palem.",created_by:"3f1a9c2e-7b44-4e21-9d33-2a1b6c5e8f01",created_at:"2026-08-04T09:20:00+07:00"} },
+      { method:"GET", path:"/corridors/", auth:true, summary:"Daftar koridor", status:[["200","OK"]] },
+      { method:"GET", path:"/corridors/{corridor_id}", auth:true, summary:"Detail koridor", status:[["200","OK"],["404","Not Found"]] },
+      { method:"PUT", path:"/corridors/{corridor_id}", auth:true, summary:"Ubah koridor", status:[["200","OK"]], req:{name:"Koridor Jalan Ijen (Revisi)",length_km:1.90} },
+      { method:"DELETE", path:"/corridors/{corridor_id}", auth:true, summary:"Hapus koridor", status:[["204","No Content"]] }
+    ]
+  },
+  {
+    id:"survey-missions", group:"Survei", title:"Survey Missions", prefix:"/survey-missions",
+    desc:"Misi survei pada sebuah koridor. created_by diisi otomatis dari token.",
+    endpoints:[
+      { method:"POST", path:"/survey-missions/", auth:true, summary:"Buat misi", status:[["201","Created"]],
+        req:{name:"Survei Koridor Ijen Q3 2026",description:"Pengambilan foto street-level.",corridor_id:"b2c4d6e8-1111-4a2b-8c3d-4e5f6a7b8c9d",status:"active",target_photo_count:500,started_at:"2026-08-05T07:00:00+07:00"},
+        res:{id:"c3d5e7f9-2222-4b3c-9d4e-5f6a7b8c9d0e",name:"Survei Koridor Ijen Q3 2026",description:"Pengambilan foto street-level.",corridor_id:"b2c4d6e8-1111-4a2b-8c3d-4e5f6a7b8c9d",created_by:"3f1a9c2e-7b44-4e21-9d33-2a1b6c5e8f01",status:"active",target_photo_count:500,started_at:"2026-08-05T07:00:00+07:00",completed_at:null,created_at:"2026-08-04T09:25:00+07:00"} },
+      { method:"GET", path:"/survey-missions/", auth:true, summary:"Daftar misi", status:[["200","OK"]] },
+      { method:"GET", path:"/survey-missions/{mission_id}", auth:true, summary:"Detail misi", status:[["200","OK"],["404","Not Found"]] },
+      { method:"PUT", path:"/survey-missions/{mission_id}", auth:true, summary:"Ubah misi", status:[["200","OK"]], req:{status:"paused",target_photo_count:450} },
+      { method:"DELETE", path:"/survey-missions/{mission_id}", auth:true, summary:"Hapus misi", status:[["204","No Content"]] },
+      { method:"PATCH", path:"/survey-missions/{mission_id}/activate", auth:true, summary:"Aktifkan misi", status:[["200","OK"],["400","Misi sudah completed"]] },
+      { method:"PATCH", path:"/survey-missions/{mission_id}/complete", auth:true, summary:"Selesaikan misi", status:[["200","OK"]] }
+    ]
+  },
+  {
+    id:"mission-assignments", group:"Survei", title:"Mission Assignments", prefix:"/mission-assignments",
+    desc:"Penugasan surveyor ke misi. Hanya Admin/Planner; user harus berrole surveyor.",
+    endpoints:[
+      { method:"POST", path:"/mission-assignments/", auth:true, summary:"Tugaskan surveyor", status:[["201","Created"],["403","Hanya Admin dan Planner yang dapat menugaskan."],["400","User bukan surveyor / duplikat"]],
+        req:{mission_id:"c3d5e7f9-2222-4b3c-9d4e-5f6a7b8c9d0e",user_id:"3f1a9c2e-7b44-4e21-9d33-2a1b6c5e8f01"},
+        res:{id:"d4e6f8a0-3333-4c4d-ae5f-6a7b8c9d0e1f",mission_id:"c3d5e7f9-2222-4b3c-9d4e-5f6a7b8c9d0e",user_id:"3f1a9c2e-7b44-4e21-9d33-2a1b6c5e8f01",assigned_at:"2026-08-04T09:30:00+07:00"} },
+      { method:"GET", path:"/mission-assignments/", auth:true, summary:"Daftar penugasan", status:[["200","OK"]] },
+      { method:"GET", path:"/mission-assignments/{assignment_id}", auth:true, summary:"Detail penugasan", status:[["200","OK"],["404","Not Found"]] },
+      { method:"PUT", path:"/mission-assignments/{assignment_id}", auth:true, summary:"Ubah penugasan", status:[["200","OK"]], req:{mission_id:"c3d5e7f9-2222-4b3c-9d4e-5f6a7b8c9d0e",user_id:"3f1a9c2e-7b44-4e21-9d33-2a1b6c5e8f01"} },
+      { method:"DELETE", path:"/mission-assignments/{assignment_id}", auth:true, summary:"Hapus penugasan", status:[["204","No Content"]] }
+    ]
+  },
+  {
+    id:"street-photos", group:"Data Lapangan", title:"Street Photos", prefix:"/street-photos",
+    desc:"Upload foto street-level (multipart/form-data). Server mengisi file_path, geom, uploaded_by, processing_status=queued.",
+    endpoints:[
+      { method:"POST", path:"/street-photos/", auth:true, summary:"Upload foto (multipart)", multipart:true,
+        status:[["201","Created"]],
+        form:[
+          ["file","file","✅","ijen_001.jpg"],["source","enum PhotoSource","✅","mobile_live"],
+          ["latitude","float","✅","-7.9666420"],["longitude","float","✅","112.6326000"],
+          ["captured_at","datetime","✅","2026-08-05T07:15:30+07:00"],["mission_id","UUID","—","c3d5e7f9-..."],
+          ["gps_accuracy_m","float","—","4.5"],["compass_azimuth","float","—","275.0"],
+          ["exif_timestamp","datetime","—","2026-08-05T07:15:29+07:00"],["is_manual_capture","bool","—","true"],
+          ["is_offline_sync","bool","—","false"]
+        ],
+        curl:`curl -X POST http://127.0.0.1:8000/street-photos/ \\
+  -H "Authorization: Bearer <TOKEN>" \\
+  -F "file=@./ijen_001.jpg" \\
+  -F "source=mobile_live" \\
+  -F "latitude=-7.9666420" \\
+  -F "longitude=112.6326000" \\
+  -F "captured_at=2026-08-05T07:15:30+07:00" \\
+  -F "mission_id=c3d5e7f9-2222-4b3c-9d4e-5f6a7b8c9d0e" \\
+  -F "gps_accuracy_m=4.5" \\
+  -F "is_manual_capture=true"`,
+        res:{id:"e5f7a9b1-4444-4d5e-bf6a-7b8c9d0e1f20",mission_id:"c3d5e7f9-2222-4b3c-9d4e-5f6a7b8c9d0e",uploaded_by:"3f1a9c2e-7b44-4e21-9d33-2a1b6c5e8f01",source:"mobile_live",original_filename:"ijen_001.jpg",file_path:"uploads/photos/e5f7a9b1-....jpg",file_size_kb:2048,latitude:-7.966642,longitude:112.6326,gps_accuracy_m:4.5,compass_azimuth:275.0,exif_timestamp:null,is_manual_capture:true,is_offline_sync:false,privacy_masked:false,processing_status:"queued",error_message:null,captured_at:"2026-08-05T07:15:30+07:00",created_at:"2026-08-05T07:16:00+07:00"} },
+      { method:"GET", path:"/street-photos/", auth:true, summary:"Daftar foto", status:[["200","OK"]] },
+      { method:"GET", path:"/street-photos/{photo_id}", auth:true, summary:"Detail foto", status:[["200","OK"],["404","Not Found"]] },
+      { method:"PUT", path:"/street-photos/{photo_id}", auth:true, summary:"Ubah metadata foto (JSON)", status:[["200","OK"]], req:{processing_status:"completed",privacy_masked:true} },
+      { method:"DELETE", path:"/street-photos/{photo_id}", auth:true, summary:"Hapus foto (+ file fisik)", status:[["204","No Content"]] }
+    ]
+  },
+  {
+    id:"segmentation-results", group:"AI Pipeline", title:"Segmentation Results", prefix:"/segmentation-results",
+    desc:"Hasil segmentasi semantik per foto. photo_id bersifat unik (1:1).",
+    endpoints:[
+      { method:"POST", path:"/segmentation-results/", auth:true, summary:"Buat hasil segmentasi", status:[["201","Created"]],
+        req:{photo_id:"e5f7a9b1-4444-4d5e-bf6a-7b8c9d0e1f20",model_name:"SEGFORMER-B5",vegetation_pct:32.5,building_pct:21.1,road_pct:18.4,sidewalk_pct:9.3,sky_pct:12.7,signage_pct:1.2,vehicle_pct:3.1,pedestrian_pct:0.8,street_furniture_pct:0.9,green_coverage_pct:33.4,building_coverage_pct:21.1,sky_visibility_pct:12.7,walkability_ratio:0.725,visual_clutter_index:0.31,mask_file_path:"uploads/masks/e5f7a9b1_mask.png",inference_time_ms:420},
+        res:{id:"f6a8b0c2-5555-4e6f-c07b-8c9d0e1f2031",photo_id:"e5f7a9b1-4444-4d5e-bf6a-7b8c9d0e1f20",model_name:"SEGFORMER-B5",vegetation_pct:32.5,green_coverage_pct:33.4,walkability_ratio:0.725,inference_time_ms:420,created_at:"2026-08-05T07:20:00+07:00"} },
+      { method:"GET", path:"/segmentation-results/", auth:true, summary:"Daftar hasil", status:[["200","OK"]] },
+      { method:"GET", path:"/segmentation-results/{segmentation_id}", auth:true, summary:"Detail", status:[["200","OK"],["404","Not Found"]] },
+      { method:"PUT", path:"/segmentation-results/{segmentation_id}", auth:true, summary:"Ubah", status:[["200","OK"]], req:{vegetation_pct:34.0} },
+      { method:"DELETE", path:"/segmentation-results/{segmentation_id}", auth:true, summary:"Hapus", status:[["204","No Content"]] }
+    ]
+  },
+  {
+    id:"perception-predictions", group:"AI Pipeline", title:"Perception Predictions", prefix:"/perception-predictions",
+    desc:"Skor persepsi (beauty/safety/comfort/UVI/GVI) per foto. photo_id unik.",
+    endpoints:[
+      { method:"POST", path:"/perception-predictions/", auth:true, summary:"Buat prediksi", status:[["201","Created"]],
+        req:{photo_id:"e5f7a9b1-4444-4d5e-bf6a-7b8c9d0e1f20",segmentation_id:"f6a8b0c2-5555-4e6f-c07b-8c9d0e1f2031",model_version:"UVIP-XGB-v2.3",beauty_score:6.8,safety_score:7.2,comfort_score:6.5,uvi_score:6.83,gvi_score:33.4,inference_time_ms:55,r2_reference:0.812},
+        res:{id:"a7b9c1d3-6666-4f70-d18c-9d0e1f203142",photo_id:"e5f7a9b1-4444-4d5e-bf6a-7b8c9d0e1f20",model_version:"UVIP-XGB-v2.3",uvi_score:6.83,gvi_score:33.4,created_at:"2026-08-05T07:21:00+07:00"} },
+      { method:"GET", path:"/perception-predictions/", auth:true, summary:"Daftar prediksi", status:[["200","OK"]] },
+      { method:"GET", path:"/perception-predictions/{prediction_id}", auth:true, summary:"Detail", status:[["200","OK"],["404","Not Found"]] },
+      { method:"PUT", path:"/perception-predictions/{prediction_id}", auth:true, summary:"Ubah", status:[["200","OK"]], req:{uvi_score:7.0} },
+      { method:"DELETE", path:"/perception-predictions/{prediction_id}", auth:true, summary:"Hapus", status:[["204","No Content"]] }
+    ]
+  },
+  {
+    id:"shap-values", group:"AI Pipeline", title:"SHAP Values", prefix:"/shap-values",
+    desc:"Kontribusi fitur (explainability) terhadap sebuah prediksi.",
+    endpoints:[
+      { method:"POST", path:"/shap-values/", auth:true, summary:"Buat SHAP value", status:[["201","Created"]],
+        req:{prediction_id:"a7b9c1d3-6666-4f70-d18c-9d0e1f203142",target_indicator:"uvi",feature_name:"green_coverage_pct",display_label:"Tutupan Hijau",shap_value:0.412,is_positive:true,rank_order:1},
+        res:{id:"c9d1e3f5-8888-40a2-f3be-1f2031425364",prediction_id:"a7b9c1d3-6666-4f70-d18c-9d0e1f203142",target_indicator:"uvi",feature_name:"green_coverage_pct",shap_value:0.412,is_positive:true,rank_order:1,created_at:"2026-08-05T07:22:00+07:00"} },
+      { method:"GET", path:"/shap-values/", auth:true, summary:"Daftar", status:[["200","OK"]] },
+      { method:"GET", path:"/shap-values/{shap_id}", auth:true, summary:"Detail", status:[["200","OK"],["404","Not Found"]] },
+      { method:"PUT", path:"/shap-values/{shap_id}", auth:true, summary:"Ubah", status:[["200","OK"]], req:{rank_order:2} },
+      { method:"DELETE", path:"/shap-values/{shap_id}", auth:true, summary:"Hapus", status:[["204","No Content"]] }
+    ]
+  },
+  {
+    id:"simulation-sessions", group:"Simulasi", title:"Simulation Sessions", prefix:"/simulation-sessions",
+    desc:"Sesi simulasi skenario perubahan koridor. created_by diisi otomatis.",
+    endpoints:[
+      { method:"POST", path:"/simulation-sessions/", auth:true, summary:"Buat sesi simulasi", status:[["201","Created"]],
+        req:{corridor_id:"b2c4d6e8-1111-4a2b-8c3d-4e5f6a7b8c9d",base_photo_id:"e5f7a9b1-4444-4d5e-bf6a-7b8c9d0e1f20",base_prediction_id:"a7b9c1d3-6666-4f70-d18c-9d0e1f203142",vegetation_adjustment_pct:20.0,sidewalk_width_adjustment_pct:15.0,signage_density_adjustment_pct:-10.0,session_label:"Skenario Penghijauan Ijen +20%",notes:"Menambah vegetasi & memperlebar trotoar."},
+        res:{id:"b8c0d2e4-7777-4081-e29d-0e1f20314253",corridor_id:"b2c4d6e8-1111-4a2b-8c3d-4e5f6a7b8c9d",session_label:"Skenario Penghijauan Ijen +20%",created_by:"3f1a9c2e-7b44-4e21-9d33-2a1b6c5e8f01",created_at:"2026-08-05T08:00:00+07:00"} },
+      { method:"GET", path:"/simulation-sessions/", auth:true, summary:"Daftar sesi", status:[["200","OK"]] },
+      { method:"GET", path:"/simulation-sessions/{session_id}", auth:true, summary:"Detail", status:[["200","OK"],["404","Not Found"]] },
+      { method:"PUT", path:"/simulation-sessions/{session_id}", auth:true, summary:"Ubah", status:[["200","OK"]], req:{vegetation_adjustment_pct:25.0} },
+      { method:"DELETE", path:"/simulation-sessions/{session_id}", auth:true, summary:"Hapus", status:[["204","No Content"]] }
+    ]
+  },
+  {
+    id:"simulation-results", group:"Simulasi", title:"Simulation Results", prefix:"/simulation-results",
+    desc:"Hasil skor sebelum/sesudah per indikator dalam sebuah sesi simulasi.",
+    endpoints:[
+      { method:"POST", path:"/simulation-results/", auth:true, summary:"Buat hasil simulasi", status:[["201","Created"]],
+        req:{session_id:"b8c0d2e4-7777-4081-e29d-0e1f20314253",indicator:"uvi",score_before:6.83,score_after:7.65,score_delta:0.82,inference_time_ms:48},
+        res:{id:"d0e2f4a6-9999-41b3-a4cf-20314253647",session_id:"b8c0d2e4-7777-4081-e29d-0e1f20314253",indicator:"uvi",score_before:6.83,score_after:7.65,score_delta:0.82,created_at:"2026-08-05T08:01:00+07:00"} },
+      { method:"GET", path:"/simulation-results/", auth:true, summary:"Daftar", status:[["200","OK"]] },
+      { method:"GET", path:"/simulation-results/{result_id}", auth:true, summary:"Detail", status:[["200","OK"],["404","Not Found"]] },
+      { method:"PUT", path:"/simulation-results/{result_id}", auth:true, summary:"Ubah", status:[["200","OK"]], req:{score_after:7.8,score_delta:0.97} },
+      { method:"DELETE", path:"/simulation-results/{result_id}", auth:true, summary:"Hapus", status:[["204","No Content"]] }
+    ]
+  },
+  {
+    id:"policy-recommendations", group:"Simulasi", title:"Policy Recommendations", prefix:"/policy-recommendations",
+    desc:"Rekomendasi kebijakan yang dipicu oleh ambang skor pada sesi simulasi.",
+    endpoints:[
+      { method:"POST", path:"/policy-recommendations/", auth:true, summary:"Buat rekomendasi", status:[["201","Created"]],
+        req:{session_id:"b8c0d2e4-7777-4081-e29d-0e1f20314253",triggered_by:"uvi_score",threshold_score:5.0,actual_score:6.83,recommendation_type:"penghijauan",recommendation_text:"Tambah vegetasi peneduh di sisi timur koridor.",priority:"high",is_auto_generated:true},
+        res:{id:"e1f3a5b7-aaaa-42c4-b5d0-314253647586",session_id:"b8c0d2e4-7777-4081-e29d-0e1f20314253",recommendation_type:"penghijauan",priority:"high",is_auto_generated:true,created_at:"2026-08-05T08:02:00+07:00"} },
+      { method:"GET", path:"/policy-recommendations/", auth:true, summary:"Daftar", status:[["200","OK"]] },
+      { method:"GET", path:"/policy-recommendations/{recommendation_id}", auth:true, summary:"Detail", status:[["200","OK"],["404","Not Found"]] },
+      { method:"PUT", path:"/policy-recommendations/{recommendation_id}", auth:true, summary:"Ubah", status:[["200","OK"]], req:{priority:"medium"} },
+      { method:"DELETE", path:"/policy-recommendations/{recommendation_id}", auth:true, summary:"Hapus", status:[["204","No Content"]] }
+    ]
+  },
+  {
+    id:"offline-sync-queues", group:"Infrastruktur", title:"Offline Sync Queue", prefix:"/offline-sync-queues",
+    desc:"Antrian sinkronisasi foto yang diambil offline. user_id diisi otomatis. (Tabel DB: offline_sync_queue)",
+    endpoints:[
+      { method:"POST", path:"/offline-sync-queues/", auth:true, summary:"Tambah ke antrian sync", status:[["201","Created"]],
+        req:{device_id:"PIXEL-7A-SURVEYOR-01",mission_id:"c3d5e7f9-2222-4b3c-9d4e-5f6a7b8c9d0e",local_file_path:"/sdcard/uvip/offline/img_0730.jpg",latitude:-7.970125,longitude:112.62984,gps_accuracy_m:6.0,compass_azimuth:180.0,is_manual_capture:false,captured_at:"2026-08-05T07:30:00+07:00",sync_status:"pending",retry_count:0},
+        res:{id:"f2a4b6c8-bbbb-43d5-c6e1-425364758697",user_id:"3f1a9c2e-7b44-4e21-9d33-2a1b6c5e8f01",device_id:"PIXEL-7A-SURVEYOR-01",sync_status:"pending",synced_photo_id:null,retry_count:0,error_message:null,synced_at:null,created_at:"2026-08-05T07:31:00+07:00"} },
+      { method:"GET", path:"/offline-sync-queues/", auth:true, summary:"Daftar antrian", status:[["200","OK"]] },
+      { method:"GET", path:"/offline-sync-queues/{queue_id}", auth:true, summary:"Detail", status:[["200","OK"],["404","Not Found"]] },
+      { method:"PUT", path:"/offline-sync-queues/{queue_id}", auth:true, summary:"Ubah status sync", status:[["200","OK"]], req:{sync_status:"synced",synced_photo_id:"e5f7a9b1-4444-4d5e-bf6a-7b8c9d0e1f20"} },
+      { method:"DELETE", path:"/offline-sync-queues/{queue_id}", auth:true, summary:"Hapus", status:[["204","No Content"]] }
+    ]
+  },
+  {
+    id:"batch-upload-jobs", group:"Infrastruktur", title:"Batch Upload Jobs", prefix:"/batch-upload-jobs",
+    desc:"Job pemrosesan batch foto dari file ZIP. created_by diisi otomatis.",
+    endpoints:[
+      { method:"POST", path:"/batch-upload-jobs/", auth:true, summary:"Buat job batch", status:[["201","Created"]],
+        req:{mission_id:"c3d5e7f9-2222-4b3c-9d4e-5f6a7b8c9d0e",zip_filename:"ijen_batch_20260805.zip",zip_file_path:"uploads/batches/ijen_batch_20260805.zip",total_photos:320,processed_photos:0,failed_photos:0,status:"queued"},
+        res:{id:"a3b5c7d9-cccc-44e6-d7f2-536475869708",mission_id:"c3d5e7f9-2222-4b3c-9d4e-5f6a7b8c9d0e",zip_filename:"ijen_batch_20260805.zip",total_photos:320,status:"queued",created_by:"3f1a9c2e-7b44-4e21-9d33-2a1b6c5e8f01",started_at:null,completed_at:null,created_at:"2026-08-05T09:00:00+07:00"} },
+      { method:"GET", path:"/batch-upload-jobs/", auth:true, summary:"Daftar job", status:[["200","OK"]] },
+      { method:"GET", path:"/batch-upload-jobs/{job_id}", auth:true, summary:"Detail", status:[["200","OK"],["404","Not Found"]] },
+      { method:"PUT", path:"/batch-upload-jobs/{job_id}", auth:true, summary:"Ubah progres job", status:[["200","OK"]], req:{status:"processing",processed_photos:120} },
+      { method:"DELETE", path:"/batch-upload-jobs/{job_id}", auth:true, summary:"Hapus", status:[["204","No Content"]] }
+    ]
+  },
+  {
+    id:"model-registries", group:"Infrastruktur", title:"Model Registries", prefix:"/model-registries",
+    desc:"Katalog versi model AI beserta metrik. (Tabel DB: model_registry)",
+    endpoints:[
+      { method:"POST", path:"/model-registries/", auth:true, summary:"Daftarkan model", status:[["201","Created"]],
+        req:{model_name:"UVIP Perception XGBoost",model_type:"perception_prediction",version_tag:"v2.3.0",description:"Model prediksi persepsi visual multi-indikator.",r2_score:0.812,mae_score:0.45,rmse_score:0.61,training_dataset:"Malang Street View 2025 (12.400 foto)",hardware_used:"NVIDIA RTX 4090",is_active:true,trained_at:"2026-07-20T10:00:00+07:00",deployed_at:"2026-07-25T14:00:00+07:00"},
+        res:{id:"b4c6d8e0-dddd-45f7-e803-647586970819",model_name:"UVIP Perception XGBoost",model_type:"perception_prediction",version_tag:"v2.3.0",r2_score:0.812,is_active:true,created_at:"2026-07-25T14:05:00+07:00"} },
+      { method:"GET", path:"/model-registries/", auth:true, summary:"Daftar model", status:[["200","OK"]] },
+      { method:"GET", path:"/model-registries/{model_id}", auth:true, summary:"Detail", status:[["200","OK"],["404","Not Found"]] },
+      { method:"PUT", path:"/model-registries/{model_id}", auth:true, summary:"Ubah", status:[["200","OK"]], req:{is_active:false} },
+      { method:"DELETE", path:"/model-registries/{model_id}", auth:true, summary:"Hapus", status:[["204","No Content"]] }
+    ]
+  }
+];
+
+const ENUMS = {
+  UserRole:["admin","surveyor","planner","officer"],
+  MissionStatus:["active","paused","completed","cancelled"],
+  PhotoSource:["mobile_live","mobile_upload","web_batch"],
+  ProcessingStatus:["queued","masking","segmenting","predicting","completed","failed"],
+  TargetIndicator:["beauty","safety","comfort","uvi"],
+  SimulationIndicator:["uvi","beauty","safety","comfort","gvi"],
+  PolicyPriority:["high","medium","low"],
+  SyncStatus:["pending","synced","failed","retrying"],
+  BatchJobStatus:["queued","extracting","processing","completed","failed","partial"],
+  ModelType:["privacy_masking","segmentation","feature_extraction","perception_prediction"]
+};
+
+// ---------- RENDER HELPERS ----------
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
+function jsonHighlight(obj){
+  const json = JSON.stringify(obj, null, 2);
+  return json.replace(/("(\\.|[^"\\])*")(\s*:)?|\b(true|false)\b|\bnull\b|-?\d+\.?\d*/g,
+    (m, str, _g2, colon, bool) => {
+      if(str!==undefined){
+        if(colon) return '<span class="tok-key">'+esc(str)+'</span><span class="tok-punc">:</span>';
+        return '<span class="tok-str">'+esc(str)+'</span>';
+      }
+      if(bool!==undefined) return '<span class="tok-bool">'+m+'</span>';
+      if(m==='null') return '<span class="tok-null">null</span>';
+      return '<span class="tok-num">'+m+'</span>';
+    });
+}
+
+function codeBlock(content, isJson){
+  const inner = isJson ? jsonHighlight(content) : esc(content);
+  return `<pre><button class="copy-btn" onclick="copyCode(this)">Copy</button><code>${inner}</code></pre>`;
+}
+
+function copyCode(btn){
+  const text = btn.parentElement.querySelector('code').innerText;
+  navigator.clipboard.writeText(text).then(()=>{btn.textContent="Copied!";setTimeout(()=>btn.textContent="Copy",1200);});
+}
+
+function renderEndpoint(ep){
+  let body = "";
+  if(ep.form){
+    body += `<h4>Form Fields (multipart/form-data)</h4><table><tr><th>Field</th><th>Tipe</th><th>Wajib</th><th>Contoh</th></tr>`;
+    ep.form.forEach(f=>{ body += `<tr><td><code>${f[0]}</code></td><td>${f[1]}</td><td class="${f[2]==='✅'?'req-yes':'req-no'}">${f[2]}</td><td>${esc(f[3])}</td></tr>`; });
+    body += `</table>`;
+  }
+  if(ep.curl){ body += `<h4>Contoh cURL</h4>${codeBlock(ep.curl,false)}`; }
+  if(ep.req){ body += `<h4>Request Body</h4>${codeBlock(ep.req,true)}`; }
+  if(ep.res){ body += `<h4>Response</h4>${codeBlock(ep.res,true)}`; }
+  if(ep.status){
+    body += `<h4>Status Codes</h4><div class="status-row">`;
+    ep.status.forEach(s=>{ const c = s[0][0]==='2'?'s2':(s[0][0]==='4'?'s4':(s[0][0]==='5'?'s5':'')); body += `<span class="status ${c}">${s[0]} — ${esc(s[1])}</span>`; });
+    body += `</div>`;
+  }
+  const auth = ep.auth ? `<span class="ep-auth">🔒 Auth</span>` : `<span class="ep-auth pub">Public</span>`;
+  return `<div class="endpoint" data-search="${(ep.method+' '+ep.path+' '+ep.summary).toLowerCase()}">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')">
+      <span class="method ${ep.method.toLowerCase()}">${ep.method}</span>
+      <span class="ep-path">${esc(ep.path)}</span>
+      ${auth}
+      <span class="ep-summary">${esc(ep.summary)}<span class="chev"> ▸</span></span>
+    </div>
+    <div class="ep-body">${body}</div>
+  </div>`;
+}
+
+function renderResource(r){
+  let eps = r.endpoints.map(renderEndpoint).join("");
+  return `<section id="${r.id}">
+    <h3 class="res-title">${esc(r.title)} <span class="prefix-tag">${esc(r.prefix)}</span></h3>
+    <p class="res-desc">${esc(r.desc)}</p>
+    ${eps}
+  </section>`;
+}
+
+function renderEnums(){
+  let rows = Object.entries(ENUMS).map(([k,vals])=>{
+    return `<tr><td><code>${k}</code></td><td>${vals.map(v=>`<span class="enum-chip">${v}</span>`).join("")}</td></tr>`;
+  }).join("");
+  return `<section id="enums"><h3 class="res-title">Enum Reference</h3>
+    <p class="res-desc">Nilai enum yang valid untuk field bertipe pilihan.</p>
+    <table><tr><th>Enum</th><th>Nilai</th></tr>${rows}</table></section>`;
+}
+
+function renderSeed(){
+  const steps = [
+    "POST /auth/register — buat user admin, surveyor, planner",
+    "POST /auth/login — login → dapatkan access_token",
+    "POST /corridors/ — buat Koridor Jalan Ijen",
+    "POST /survey-missions/ — buat misi survei pada koridor",
+    "POST /mission-assignments/ — tugaskan surveyor ke misi",
+    "POST /street-photos/ — upload foto + GPS (multipart)",
+    "POST /segmentation-results/ — hasil segmentasi untuk foto",
+    "POST /perception-predictions/ — skor persepsi untuk foto",
+    "POST /shap-values/ — kontribusi fitur untuk prediksi",
+    "POST /simulation-sessions/ — buat sesi simulasi skenario",
+    "POST /simulation-results/ — skor before/after simulasi",
+    "POST /policy-recommendations/ — rekomendasi kebijakan",
+    "POST /batch-upload-jobs/ & /model-registries/ — data infrastruktur"
+  ];
+  const users = [
+    {name:"Budi Santoso",email:"admin@uvip.id",password:"admin123",role:"admin"},
+    {name:"Andi Prasetyo",email:"surveyor@uvip.id",password:"surveyor123",role:"surveyor"},
+    {name:"Citra Dewi",email:"planner@uvip.id",password:"planner123",role:"planner"}
+  ];
+  return `<section id="seed"><h3 class="res-title">Contoh Data Seed (Alur Lengkap)</h3>
+    <p class="res-desc">Urutan berikut menghormati semua foreign key — jalankan berurutan untuk mengisi data demo end-to-end.</p>
+    <ol class="steps">${steps.map(s=>`<li>${esc(s)}</li>`).join("")}</ol>
+    <h4>3 User Awal (siap register)</h4>
+    ${codeBlock(users,true)}
+    <div class="callout warn">⚠️ <b>Aktivasi akun:</b> user baru default <code>is_active: true</code>, namun <code>PATCH /users/{id}/activate</code> hanya untuk <b>Admin</b> dan Admin tidak boleh mengaktifkan akunnya sendiri.</div>
+    <div class="callout">ℹ️ <b>Relasi unik:</b> <code>segmentation_results.photo_id</code> &amp; <code>perception_predictions.photo_id</code> bersifat unik — satu foto = satu segmentasi &amp; satu prediksi.</div>
+  </section>`;
+}
+
+// ---------- BUILD PAGE ----------
+function build(){
+  // nav
+  const groups = {};
+  RESOURCES.forEach(r=>{ (groups[r.group] = groups[r.group]||[]).push(r); });
+  let nav = "";
+  Object.entries(groups).forEach(([g,items])=>{
+    nav += `<div class="nav-group">${g}</div>`;
+    items.forEach(r=>{ nav += `<a href="#${r.id}" data-target="${r.id}">${esc(r.title)}</a>`; });
+  });
+  nav += `<div class="nav-group">Referensi</div>
+    <a href="#enums" data-target="enums">Enum Reference</a>
+    <a href="#seed" data-target="seed">Contoh Data Seed</a>`;
+  document.getElementById("nav").innerHTML = nav;
+
+  // doc
+  let doc = RESOURCES.map(renderResource).join("");
+  doc += renderEnums() + renderSeed();
+  document.getElementById("doc").innerHTML = doc;
+
+  // scroll spy
+  const links = [...document.querySelectorAll('.nav a')];
+  const sections = [...document.querySelectorAll('section')];
+  const obs = new IntersectionObserver(entries=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        links.forEach(l=>l.classList.toggle('active', l.dataset.target===e.target.id));
+      }
+    });
+  },{rootMargin:"-20% 0px -70% 0px"});
+  sections.forEach(s=>obs.observe(s));
+
+  // search
+  document.getElementById("search").addEventListener("input", e=>{
+    const q = e.target.value.trim().toLowerCase();
+    document.querySelectorAll("section").forEach(sec=>{
+      let anyVisible = false;
+      sec.querySelectorAll(".endpoint").forEach(ep=>{
+        const match = !q || (ep.dataset.search||"").includes(q);
+        ep.classList.toggle("hidden", !match);
+        if(match) anyVisible = true;
+      });
+      const hasEndpoints = sec.querySelectorAll(".endpoint").length>0;
+      sec.classList.toggle("hidden", hasEndpoints && !anyVisible && !!q);
+    });
+  });
+}
+build();
+</script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+# ============================================================
+# UVIP Backend — Docker Compose (Isolated Stack)
+# ============================================================
+# Project name: uvip  →  semua container akan ber-prefix "uvip-"
+# Network: uvip_net   →  network terisolasi, tidak nabrak stack lain
+# Port: 8001 (host) → 8000 (container)
+# ============================================================
+
+services:
+  # ---- PostgreSQL + PostGIS ----
+  db:
+    image: postgis/postgis:16-3.4       # PostgreSQL 16 + PostGIS 3.4
+    container_name: uvip-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: uvip
+      POSTGRES_USER: uvip
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-uvip_secret_2026}
+    volumes:
+      - uvip_pgdata:/var/lib/postgresql/data
+      - ./deploy/init-db.sql:/docker-entrypoint-initdb.d/01-init-db.sql:ro
+    networks:
+      - uvip_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U uvip -d uvip"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Port 5433 di host (aman, tidak nabrak PostgreSQL lain di 5432)
+    ports:
+      - "127.0.0.1:5433:5432"
+
+  # ---- FastAPI Application ----
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: uvip-app
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://uvip:${DB_PASSWORD:-uvip_secret_2026}@db:5432/uvip
+      SECRET_KEY: ${SECRET_KEY:-ganti_ini_dengan_random_string_yang_panjang}
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 120
+    volumes:
+      - uvip_uploads:/app/uploads       # persistent uploads
+    networks:
+      - uvip_net
+    ports:
+      - "127.0.0.1:8001:8000"           # hanya bisa diakses dari localhost (lewat Nginx)
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  uvip_pgdata:
+    name: uvip_pgdata                   # volume database
+  uvip_uploads:
+    name: uvip_uploads                  # volume uploaded files
+
+networks:
+  uvip_net:
+    name: uvip_net                      # network terisolasi khusus UVIP
+    driver: bridge
