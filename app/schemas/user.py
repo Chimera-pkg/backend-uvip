@@ -21,6 +21,7 @@ class UserResponse(BaseModel):
     email: EmailStr
     role: UserRole
     is_active: bool
+    last_login_at: Optional[datetime] = None
     created_at: datetime
 
     class Config:
