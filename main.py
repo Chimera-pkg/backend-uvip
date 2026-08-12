@@ -9,10 +9,20 @@ from app.routers import (
     policy_recommendations, offline_sync_queues, batch_upload_jobs,
     model_registries
 )
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
     title="UVIP - Urban Visual Perception API",
     version="1.0.0"
+)
+
+# cors middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # create folder upload bos lek gorong ono
