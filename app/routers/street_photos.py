@@ -56,6 +56,7 @@ from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from geoalchemy2 import WKTElement
 
@@ -64,6 +65,9 @@ from app.db.models import StreetPhoto, User
 from app.db.enums import PhotoSource, ProcessingStatus
 from app.schemas.street_photo import StreetPhotoResponse, StreetPhotoUpdate
 from app.routers.auth import get_current_user
+
+from app.routers.segmentation_results import create_segmentation
+from app.schemas.segmentation_result import SegmentationResultCreate
 
 router = APIRouter(prefix="/street-photos", tags=["Street Photos"])
 
@@ -143,6 +147,30 @@ async def upload_street_photo(
     db.add(photo)
     db.commit()
     db.refresh(photo)
+
+    # dummy segmentation start
+    segmentation_data = SegmentationResultCreate(
+        photo_id=photo.id,
+        model_name="SEGFORMER-B5",
+        vegetation_pct=0,
+        building_pct=0,
+        road_pct=0,
+        sidewalk_pct=0,
+        sky_pct=0,
+        signage_pct=0,
+        vehicle_pct=0,
+        pedestrian_pct=0,
+        street_furniture_pct=0,
+        green_coverage_pct=0,
+        building_coverage_pct=0,
+        sky_visibility_pct=0,
+        walkability_ratio=0,
+        visual_clutter_index=0,
+        mask_file_path=relative_file_path,
+        inference_time_ms=0
+    )
+    create_segmentation(data=segmentation_data, db=db, current_user=current_user)
+    # dummy segmentation end
     return photo
 
 
@@ -197,4 +225,11 @@ def delete_photo(photo_id: UUID, db: Session = Depends(get_db), current_user: Us
 
     db.delete(photo)
     db.commit()
-    return None
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            "status": "success",
+            "message": "File foto berhasil dihapus",
+            "deleted_id": str(photo_id)
+        }
+    )
