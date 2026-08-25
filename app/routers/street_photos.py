@@ -61,7 +61,18 @@ from sqlalchemy.orm import Session
 from geoalchemy2 import WKTElement
 
 from app.db.database import get_db
-from app.db.models import StreetPhoto, User
+# from app.db.models import StreetPhoto, User, SegmentationResult
+from app.db.models import (
+    StreetPhoto,
+    SegmentationResult,
+    PerceptionPrediction,
+    ShapValue,
+    SimulationSession,
+    SimulationResult,
+    PolicyRecommendation,
+    OfflineSyncQueue,
+    User
+)
 from app.db.enums import PhotoSource, ProcessingStatus
 from app.schemas.street_photo import StreetPhotoResponse, StreetPhotoUpdate
 from app.routers.auth import get_current_user
@@ -213,23 +224,118 @@ def update_photo(photo_id: UUID, data: StreetPhotoUpdate, db: Session = Depends(
 
 
 # 5. DELETE BY ID (TERMASUK HAPUS FILE FISIK)
-@router.delete("/{photo_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_photo(photo_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    photo = db.query(StreetPhoto).filter(StreetPhoto.id == photo_id).first()
-    if not photo:
-        raise HTTPException(status_code=404, detail="Foto tidak ditemukan")
+# @router.delete("/{photo_id}", status_code=status.HTTP_204_NO_CONTENT)
+# def delete_photo(photo_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+#     photo = db.query(StreetPhoto).filter(StreetPhoto.id == photo_id).first()
+#     if not photo:
+#         raise HTTPException(status_code=404, detail="Foto tidak ditemukan")
     
-    # Hapus file fisik dari server jika file-nya ada
-    if os.path.exists(photo.file_path):
-        os.remove(photo.file_path)
+#     # Hapus file fisik dari server jika file-nya ada
+#     if os.path.exists(photo.file_path):
+#         os.remove(photo.file_path)
 
-    db.delete(photo)
-    db.commit()
+#     db.delete(photo)
+#     db.commit()
+#     return JSONResponse(
+#         status_code=status.HTTP_200_OK,
+#         content={
+#             "status": "success",
+#             "message": "File foto berhasil dihapus",
+#             "deleted_id": str(photo_id)
+#         }
+#     )
+
+@router.delete("/{photo_id}")
+def delete_photo(
+    photo_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    execute_full_cascade_delete_photo(photo_id=photo_id, db=db)
+    
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content={
             "status": "success",
-            "message": "File foto berhasil dihapus",
+            "message": "File foto beserta seluruh riwayat analisis & simulasinya berhasil dihapus bersih",
             "deleted_id": str(photo_id)
         }
     )
+
+def execute_full_cascade_delete_photo(photo_id: UUID, db: Session) -> None:
+    """
+    Menghapus record StreetPhoto beserta seluruh dependensi tabel anak
+    secara berurutan dari level terdalam untuk menghindari ForeignKeyViolation.
+    """
+    photo = db.query(StreetPhoto).filter(StreetPhoto.id == photo_id).first()
+    if not photo:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Foto/Video dengan ID '{photo_id}' tidak ditemukan."
+        )
+
+    db.query(OfflineSyncQueue).filter(
+        OfflineSyncQueue.synced_photo_id == photo_id
+    ).update({"synced_photo_id": None}, synchronize_session=False)
+
+    predictions = db.query(PerceptionPrediction).filter(
+        PerceptionPrediction.photo_id == photo_id
+    ).all()
+    prediction_ids = [p.id for p in predictions]
+
+    sim_query = db.query(SimulationSession).filter(
+        (SimulationSession.base_photo_id == photo_id) |
+        (SimulationSession.base_prediction_id.in_(prediction_ids) if prediction_ids else False)
+    )
+    sim_sessions = sim_query.all()
+    session_ids = [s.id for s in sim_sessions]
+
+    # delete anak simulation_session
+    if session_ids:
+        # delete policy_recommendations
+        db.query(PolicyRecommendation).filter(
+            PolicyRecommendation.session_id.in_(session_ids)
+        ).delete(synchronize_session=False)
+
+        # delete simulation_results
+        db.query(SimulationResult).filter(
+            SimulationResult.session_id.in_(session_ids)
+        ).delete(synchronize_session=False)
+
+        # delete simulation_sessions
+        db.query(SimulationSession).filter(
+            SimulationSession.id.in_(session_ids)
+        ).delete(synchronize_session=False)
+
+    # delete perception_predictions
+    if prediction_ids:
+        db.query(ShapValue).filter(
+            ShapValue.prediction_id.in_(prediction_ids)
+        ).delete(synchronize_session=False)
+
+        db.query(PerceptionPrediction).filter(
+            PerceptionPrediction.id.in_(prediction_ids)
+        ).delete(synchronize_session=False)
+
+    # delete segmentation
+    segmentation = db.query(SegmentationResult).filter(
+        SegmentationResult.photo_id == photo_id
+    ).first()
+
+    if segmentation:
+        if segmentation.mask_file_path and os.path.exists(segmentation.mask_file_path):
+            try:
+                os.remove(segmentation.mask_file_path)
+            except OSError:
+                pass
+        db.delete(segmentation)
+
+    # delete file fisik
+    if photo.file_path and os.path.exists(photo.file_path):
+        try:
+            os.remove(photo.file_path)
+        except OSError:
+            pass
+
+    db.delete(photo)
+    db.commit()
