@@ -188,7 +188,10 @@ async def upload_street_photo(
 # 2. READ ALL
 @router.get("/", response_model=List[StreetPhotoResponse])
 def list_photos(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    return db.query(StreetPhoto).all()
+    # return db.query(StreetPhoto).all()
+    return db.query(StreetPhoto).filter(
+        StreetPhoto.file_path.ilike(f"{UPLOAD_DIR}/%")
+    ).all()
 
 
 # 3. READ BY ID
