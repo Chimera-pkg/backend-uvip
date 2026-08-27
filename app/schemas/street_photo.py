@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
 from datetime import datetime
 from app.db.enums import PhotoSource, ProcessingStatus
@@ -61,5 +61,14 @@ class StreetPhotoResponse(BaseModel):
     captured_at: datetime
     created_at: datetime
 
+    class Config:
+        from_attributes = True
+
+class PaginatedStreetPhotoResponse(BaseModel):
+    total_data: int
+    total_pages: int
+    current_page: int
+    data: List[StreetPhotoResponse]
+    
     class Config:
         from_attributes = True

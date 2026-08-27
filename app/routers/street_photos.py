@@ -74,11 +74,14 @@ from app.db.models import (
     User
 )
 from app.db.enums import PhotoSource, ProcessingStatus
-from app.schemas.street_photo import StreetPhotoResponse, StreetPhotoUpdate
 from app.routers.auth import get_current_user
-
 from app.routers.segmentation_results import create_segmentation
+from app.schemas.street_photo import StreetPhotoResponse, StreetPhotoUpdate, PaginatedStreetPhotoResponse
 from app.schemas.segmentation_result import SegmentationResultCreate
+
+# pagination
+from fastapi import Query
+from math import ceil
 
 router = APIRouter(prefix="/street-photos", tags=["Street Photos"])
 
@@ -186,12 +189,34 @@ async def upload_street_photo(
 
 
 # 2. READ ALL
-@router.get("/", response_model=List[StreetPhotoResponse])
-def list_photos(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    # return db.query(StreetPhoto).all()
-    return db.query(StreetPhoto).filter(
+# @router.get("/", response_model=List[StreetPhotoResponse])
+# def list_photos(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+#     # return db.query(StreetPhoto).all()
+#     return db.query(StreetPhoto).filter(
+#         StreetPhoto.file_path.ilike(f"{UPLOAD_DIR}/%")
+#     ).all()
+@router.get("/", response_model=PaginatedStreetPhotoResponse)
+def list_photos(
+    page: int = Query(1, ge=1, description="Nomor halaman yang ingin diakses"),
+    size: int = Query(10, ge=1, le=100, description="Jumlah data maksimal per halaman"),
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
+    base_query = db.query(StreetPhoto).filter(
         StreetPhoto.file_path.ilike(f"{UPLOAD_DIR}/%")
-    ).all()
+    )
+
+    total_data = base_query.count()
+    total_pages = ceil(total_data / size) if total_data > 0 else 1
+    skip = (page - 1) * size
+    photos = base_query.order_by(StreetPhoto.created_at.desc()).offset(skip).limit(size).all()
+
+    return {
+        "total_data": total_data,
+        "total_pages": total_pages,
+        "current_page": page,
+        "data": photos
+    }
 
 
 # 3. READ BY ID
