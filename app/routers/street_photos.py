@@ -71,6 +71,7 @@ from app.db.models import (
     SimulationResult,
     PolicyRecommendation,
     OfflineSyncQueue,
+    Project,
     User
 )
 from app.db.enums import PhotoSource, ProcessingStatus
@@ -101,6 +102,7 @@ async def upload_street_photo(
     latitude: float = Form(...),
     longitude: float = Form(...),
     captured_at: datetime = Form(...),
+    project_id: Optional[UUID] = Form(None),
     mission_id: Optional[UUID] = Form(None),
     gps_accuracy_m: Optional[float] = Form(None),
     compass_azimuth: Optional[float] = Form(None),
@@ -138,8 +140,17 @@ async def upload_street_photo(
     # Buat titik geometri PostGIS (Point SRID 4326: Longitude dulu baru Latitude!)
     geom_point = WKTElement(f"POINT({longitude} {latitude})", srid=4326)
 
+    # Validasi project_id jika dikirim
+    if project_id:
+        if not db.query(Project).filter(Project.id == project_id).first():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Project dengan ID '{project_id}' tidak ditemukan."
+            )
+
     # Simpan record ke database
     photo = StreetPhoto(
+        project_id=project_id,
         mission_id=mission_id,
         uploaded_by=current_user.id,
         source=source,
@@ -199,12 +210,19 @@ async def upload_street_photo(
 def list_photos(
     page: int = Query(1, ge=1, description="Nomor halaman yang ingin diakses"),
     size: int = Query(10, ge=1, le=100, description="Jumlah data maksimal per halaman"),
-    db: Session = Depends(get_db), 
+    project_id: Optional[str] = Query(None, description="Filter berdasarkan project (UUID atau 'unassigned' untuk media tanpa project)"),
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     base_query = db.query(StreetPhoto).filter(
         StreetPhoto.file_path.ilike(f"{UPLOAD_DIR}/%")
     )
+
+    if project_id:
+        if project_id.lower() == "unassigned":
+            base_query = base_query.filter(StreetPhoto.project_id.is_(None))
+        else:
+            base_query = base_query.filter(StreetPhoto.project_id == project_id)
 
     total_data = base_query.count()
     total_pages = ceil(total_data / size) if total_data > 0 else 1

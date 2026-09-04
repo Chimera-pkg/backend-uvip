@@ -42,6 +42,7 @@ class StreetPhotoUpdate(BaseModel):
 
 class StreetPhotoResponse(BaseModel):
     id: UUID
+    project_id: Optional[UUID]
     mission_id: Optional[UUID]
     uploaded_by: UUID
     source: PhotoSource

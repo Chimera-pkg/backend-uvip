@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from app.routers import (
     auth, users, corridors, survey_missions, mission_assignments,
-    street_photos, street_videos, segmentation_results, perception_predictions,
+    projects, street_photos, street_videos, segmentation_results, perception_predictions,
     shap_values, simulation_sessions, simulation_results,
     policy_recommendations, offline_sync_queues, batch_upload_jobs,
     model_registries
@@ -43,6 +43,7 @@ app.include_router(users.router)
 app.include_router(corridors.router)
 app.include_router(survey_missions.router)
 app.include_router(mission_assignments.router)
+app.include_router(projects.router)
 app.include_router(street_photos.router)
 app.include_router(street_videos.router)
 app.include_router(segmentation_results.router)

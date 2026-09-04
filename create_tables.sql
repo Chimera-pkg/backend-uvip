@@ -103,10 +103,27 @@ CREATE TABLE mission_assignments (
 );
 
 -- ==========================================
--- 7. TABEL 5: street_photos
+-- 7. TABEL 5: projects
+-- ==========================================
+CREATE TABLE projects (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(200) NOT NULL,
+    location VARCHAR(200),
+    description TEXT,
+    created_by UUID NOT NULL REFERENCES users(id),
+    last_opened_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_projects_created_by ON projects(created_by);
+CREATE INDEX idx_projects_last_opened_at ON projects(last_opened_at DESC);
+
+-- ==========================================
+-- 8. TABEL 6: street_photos
 -- ==========================================
 CREATE TABLE street_photos (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID REFERENCES projects(id),
     mission_id UUID REFERENCES survey_missions(id),
     uploaded_by UUID NOT NULL REFERENCES users(id),
     source photo_source NOT NULL,
@@ -129,6 +146,7 @@ CREATE TABLE street_photos (
 );
 
 CREATE INDEX idx_photos_geom ON street_photos USING GIST (geom);
+CREATE INDEX idx_photos_project ON street_photos(project_id);
 CREATE INDEX idx_photos_mission ON street_photos(mission_id);
 CREATE INDEX idx_photos_status ON street_photos(processing_status);
 CREATE INDEX idx_photos_captured_at ON street_photos(captured_at DESC);
