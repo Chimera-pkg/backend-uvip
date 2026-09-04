@@ -71,9 +71,20 @@ class MissionAssignment(Base):
     assigned_at = Column(DateTime(timezone=True), server_default=func.now())
     __table_args__ = (UniqueConstraint("mission_id", "user_id", name="unique_mission_user"),)
 
+class Project(Base):
+    __tablename__ = "projects"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(200), nullable=False)
+    location = Column(String(200))
+    description = Column(Text)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    last_opened_at = Column(DateTime(timezone=True))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
 class StreetPhoto(Base):
     __tablename__ = "street_photos"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), index=True)
     mission_id = Column(UUID(as_uuid=True), ForeignKey("survey_missions.id"))
     uploaded_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     # source = Column(ENUM(PhotoSource, name="photo_source", create_type=False), nullable=False)
