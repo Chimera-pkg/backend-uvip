@@ -115,6 +115,7 @@ CREATE TABLE street_photos (
     file_size_kb INTEGER,
     latitude DECIMAL(10, 7) NOT NULL,
     longitude DECIMAL(10, 7) NOT NULL,
+    street_name VARCHAR(255),
     geom GEOMETRY(POINT, 4326),
     gps_accuracy_m DECIMAL(6, 2),
     compass_azimuth DECIMAL(6, 2),
@@ -159,6 +160,9 @@ CREATE TABLE segmentation_results (
     visual_clutter_index DECIMAL(5, 4),
     
     mask_file_path VARCHAR(500),
+    segmentation_url VARCHAR(500),
+    privacy_masked_url VARCHAR(500),
+    segmentation_overlay_url VARCHAR(500),
     inference_time_ms INTEGER,
     seluruh_percentage DECIMAL(5, 2),
     created_at TIMESTAMPTZ DEFAULT NOW()
@@ -333,3 +337,21 @@ CREATE TABLE model_registry (
 
 CREATE INDEX idx_model_name ON model_registry(model_name);
 CREATE UNIQUE INDEX idx_model_type_active ON model_registry(model_type) WHERE is_active = TRUE;
+
+CREATE TABLE video_output_segmentations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    photo_id UUID UNIQUE REFERENCES street_photos(id),
+	video_url TEXT NOT NULL,
+    fps DOUBLE PRECISION,
+    frame_count DOUBLE PRECISION,
+    width DOUBLE PRECISION,
+    height DOUBLE PRECISION,
+    duration_seconds DOUBLE PRECISION,
+    frames_processed DOUBLE PRECISION,
+    processing_time_ms DOUBLE PRECISION,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Opsional: Index jika sering melakukan query berdasarkan URL atau waktu pembuatan
+CREATE INDEX idx_video_url ON video_output_segmentations(video_url);
+CREATE INDEX idx_video_created_at ON video_output_segmentations(created_at);

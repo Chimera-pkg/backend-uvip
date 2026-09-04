@@ -12,6 +12,7 @@ class StreetPhotoCreate(BaseModel):
     file_size_kb: Optional[int] = None
     latitude: float
     longitude: float
+    street_name: Optional[str] = None
     gps_accuracy_m: Optional[float] = None
     compass_azimuth: Optional[float] = None
     exif_timestamp: Optional[datetime] = None
@@ -30,6 +31,7 @@ class StreetPhotoUpdate(BaseModel):
     file_size_kb: Optional[int] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    street_name: Optional[str] = None
     gps_accuracy_m: Optional[float] = None
     compass_azimuth: Optional[float] = None
     exif_timestamp: Optional[datetime] = None
@@ -50,6 +52,7 @@ class StreetPhotoResponse(BaseModel):
     file_size_kb: Optional[int]
     latitude: float
     longitude: float
+    street_name: Optional[str] = None
     gps_accuracy_m: Optional[float]
     compass_azimuth: Optional[float]
     exif_timestamp: Optional[datetime]

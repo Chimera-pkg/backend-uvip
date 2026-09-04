@@ -33,6 +33,10 @@ from app.schemas.street_photo import StreetPhotoResponse, StreetPhotoUpdate, Pag
 from fastapi import Query
 from math import ceil
 
+# background task
+from fastapi import BackgroundTasks
+from app.service.ai_service import process_video_with_ai_task
+
 router = APIRouter(prefix="/street-videos", tags=["Street Videos"])
 
 # Folder khusus penyimpanan video di server
@@ -43,6 +47,7 @@ os.makedirs(VIDEO_UPLOAD_DIR, exist_ok=True)
 # 1. CREATE (STREAMING UPLOAD VIDEO + SIMPAN METADATA)
 @router.post("/", response_model=StreetPhotoResponse, status_code=status.HTTP_201_CREATED)
 async def upload_street_video(
+    background_tasks: BackgroundTasks,
     # File Video dari Client
     file: UploadFile = File(..., description="File Video (.mp4, .mov, .avi, .mkv, .webm)"),
     
@@ -50,6 +55,7 @@ async def upload_street_video(
     source: PhotoSource = Form(...),
     latitude: float = Form(...),
     longitude: float = Form(...),
+    street_name: Optional[str] = Form(None),
     captured_at: datetime = Form(...),
     mission_id: Optional[UUID] = Form(None),
     gps_accuracy_m: Optional[float] = Form(None),
@@ -110,6 +116,7 @@ async def upload_street_video(
         file_size_kb=file_size_kb,
         latitude=latitude,
         longitude=longitude,
+        street_name=street_name,
         geom=geom_point,
         gps_accuracy_m=gps_accuracy_m,
         compass_azimuth=compass_azimuth,
@@ -124,29 +131,8 @@ async def upload_street_video(
     db.commit()
     db.refresh(video_record)
 
-    # dummy segmentation start
-    segmentation_data = SegmentationResultCreate(
-        photo_id=video_record.id,
-        model_name="SEGFORMER-B5",
-        vegetation_pct=10,
-        building_pct=20,
-        road_pct=30,
-        sidewalk_pct=40,
-        sky_pct=50,
-        signage_pct=60,
-        vehicle_pct=70,
-        pedestrian_pct=0,
-        street_furniture_pct=0,
-        green_coverage_pct=0,
-        building_coverage_pct=0,
-        sky_visibility_pct=0,
-        walkability_ratio=0,
-        visual_clutter_index=0,
-        mask_file_path=relative_file_path,
-        inference_time_ms=0
-    )
-    create_segmentation(data=segmentation_data, db=db, current_user=current_user)
-    # dummy segmentation end
+    background_tasks.add_task(process_video_with_ai_task, video_record.id, relative_file_path)
+
     return video_record
 
 

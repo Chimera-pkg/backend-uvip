@@ -83,6 +83,10 @@ from app.schemas.segmentation_result import SegmentationResultCreate
 from fastapi import Query
 from math import ceil
 
+# background task
+from fastapi import BackgroundTasks
+from app.service.ai_service import process_photo_with_ai_task
+
 router = APIRouter(prefix="/street-photos", tags=["Street Photos"])
 
 # Folder tujuan penyimpanan foto di server
@@ -91,15 +95,114 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
 # 1. CREATE (UPLOAD FOTO FISIK + SIMPAN METADATA)
+# @router.post("/", response_model=StreetPhotoResponse, status_code=status.HTTP_201_CREATED)
+# async def upload_street_photo(
+#     # File Fisik dari Client
+#     file: UploadFile = File(...),
+    
+#     # Metadata Form Input
+#     source: PhotoSource = Form(...),
+#     latitude: float = Form(...),
+#     longitude: float = Form(...),
+#     captured_at: datetime = Form(...),
+#     mission_id: Optional[UUID] = Form(None),
+#     gps_accuracy_m: Optional[float] = Form(None),
+#     compass_azimuth: Optional[float] = Form(None),
+#     exif_timestamp: Optional[datetime] = Form(None),
+#     is_manual_capture: bool = Form(False),
+#     is_offline_sync: bool = Form(False),
+    
+#     # Injeksi DB & User
+#     db: Session = Depends(get_db),
+#     current_user: User = Depends(get_current_user)
+# ):
+#     # Validation Format File
+#     allowed_extensions = {".jpg", ".jpeg", ".png", ".webp"}
+#     file_ext = os.path.splitext(file.filename)[1].lower()
+#     if file_ext not in allowed_extensions:
+#         raise HTTPException(
+#             status_code=400, 
+#             detail="Format file tidak didukung! Gunakan .jpg, .jpeg, .png, atau .webp"
+#         )
+
+#     # Buat nama file unik menggunakan UUID agar tidak menimpa file bernama sama
+#     saved_filename = f"{uuid.uuid4()}{file_ext}"
+#     relative_file_path = os.path.join(UPLOAD_DIR, saved_filename).replace("\\", "/")
+
+#     # Simpan file ke direktori server & hitung ukurannya
+#     try:
+#         contents = await file.read()
+#         file_size_kb = int(len(contents) / 1024)  # Hitung ukuran file dalam KB
+        
+#         with open(relative_file_path, "wb") as f:
+#             f.write(contents)
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Gagal menyimpan file: {str(e)}")
+
+#     # Buat titik geometri PostGIS (Point SRID 4326: Longitude dulu baru Latitude!)
+#     geom_point = WKTElement(f"POINT({longitude} {latitude})", srid=4326)
+
+#     # Simpan record ke database
+#     photo = StreetPhoto(
+#         mission_id=mission_id,
+#         uploaded_by=current_user.id,
+#         source=source,
+#         original_filename=file.filename,
+#         file_path=relative_file_path,
+#         file_size_kb=file_size_kb,
+#         latitude=latitude,
+#         longitude=longitude,
+#         geom=geom_point,
+#         gps_accuracy_m=gps_accuracy_m,
+#         compass_azimuth=compass_azimuth,
+#         exif_timestamp=exif_timestamp,
+#         is_manual_capture=is_manual_capture,
+#         is_offline_sync=is_offline_sync,
+#         captured_at=captured_at,
+#         processing_status=ProcessingStatus.QUEUED
+#     )
+
+#     db.add(photo)
+#     db.commit()
+#     db.refresh(photo)
+
+#     # dummy segmentation start
+#     segmentation_data = SegmentationResultCreate(
+#         photo_id=photo.id,
+#         model_name="SEGFORMER-B5",
+#         vegetation_pct=0,
+#         building_pct=0,
+#         road_pct=0,
+#         sidewalk_pct=0,
+#         sky_pct=0,
+#         signage_pct=0,
+#         vehicle_pct=0,
+#         pedestrian_pct=0,
+#         street_furniture_pct=0,
+#         green_coverage_pct=0,
+#         building_coverage_pct=0,
+#         sky_visibility_pct=0,
+#         walkability_ratio=0,
+#         visual_clutter_index=0,
+#         mask_file_path=relative_file_path,
+#         inference_time_ms=0
+#     )
+#     create_segmentation(data=segmentation_data, db=db, current_user=current_user)
+#     # dummy segmentation end
+#     return photo
+
 @router.post("/", response_model=StreetPhotoResponse, status_code=status.HTTP_201_CREATED)
 async def upload_street_photo(
+    # Injeksi Background Tasks
+    background_tasks: BackgroundTasks,
+    
     # File Fisik dari Client
     file: UploadFile = File(...),
     
-    # Metadata Form Input
     source: PhotoSource = Form(...),
     latitude: float = Form(...),
     longitude: float = Form(...),
+    street_name: Optional[str] = Form(None),
     captured_at: datetime = Form(...),
     mission_id: Optional[UUID] = Form(None),
     gps_accuracy_m: Optional[float] = Form(None),
@@ -121,15 +224,14 @@ async def upload_street_photo(
             detail="Format file tidak didukung! Gunakan .jpg, .jpeg, .png, atau .webp"
         )
 
-    # Buat nama file unik menggunakan UUID agar tidak menimpa file bernama sama
+    # Buat nama file unik menggunakan UUID
     saved_filename = f"{uuid.uuid4()}{file_ext}"
     relative_file_path = os.path.join(UPLOAD_DIR, saved_filename).replace("\\", "/")
 
     # Simpan file ke direktori server & hitung ukurannya
     try:
         contents = await file.read()
-        file_size_kb = int(len(contents) / 1024)  # Hitung ukuran file dalam KB
-        
+        file_size_kb = int(len(contents) / 1024) 
         with open(relative_file_path, "wb") as f:
             f.write(contents)
     except Exception as e:
@@ -148,6 +250,7 @@ async def upload_street_photo(
         file_size_kb=file_size_kb,
         latitude=latitude,
         longitude=longitude,
+        street_name=street_name,
         geom=geom_point,
         gps_accuracy_m=gps_accuracy_m,
         compass_azimuth=compass_azimuth,
@@ -155,36 +258,16 @@ async def upload_street_photo(
         is_manual_capture=is_manual_capture,
         is_offline_sync=is_offline_sync,
         captured_at=captured_at,
-        processing_status=ProcessingStatus.QUEUED
+        processing_status=ProcessingStatus.QUEUED # Status awal antrean
     )
 
     db.add(photo)
     db.commit()
     db.refresh(photo)
 
-    # dummy segmentation start
-    segmentation_data = SegmentationResultCreate(
-        photo_id=photo.id,
-        model_name="SEGFORMER-B5",
-        vegetation_pct=0,
-        building_pct=0,
-        road_pct=0,
-        sidewalk_pct=0,
-        sky_pct=0,
-        signage_pct=0,
-        vehicle_pct=0,
-        pedestrian_pct=0,
-        street_furniture_pct=0,
-        green_coverage_pct=0,
-        building_coverage_pct=0,
-        sky_visibility_pct=0,
-        walkability_ratio=0,
-        visual_clutter_index=0,
-        mask_file_path=relative_file_path,
-        inference_time_ms=0
-    )
-    create_segmentation(data=segmentation_data, db=db, current_user=current_user)
-    # dummy segmentation end
+    # Lempar eksekusi pemanggilan API AI ke background thread
+    background_tasks.add_task(process_photo_with_ai_task, photo.id, relative_file_path)
+
     return photo
 
 

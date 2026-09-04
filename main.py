@@ -7,7 +7,7 @@ from app.routers import (
     street_photos, street_videos, segmentation_results, perception_predictions,
     shap_values, simulation_sessions, simulation_results,
     policy_recommendations, offline_sync_queues, batch_upload_jobs,
-    model_registries
+    model_registries, video_output_segmentations
 )
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -54,6 +54,7 @@ app.include_router(policy_recommendations.router)
 app.include_router(offline_sync_queues.router)
 app.include_router(batch_upload_jobs.router)
 app.include_router(model_registries.router)
+app.include_router(video_output_segmentations.router)
 
 @app.get("/")
 def root():
