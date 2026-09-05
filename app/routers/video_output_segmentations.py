@@ -140,3 +140,41 @@ def delete_video_output(
             "deleted_id": str(output_id)
         }
     )
+
+@router.get("/by-photo/", include_in_schema=False)
+@router.get("/by-photo", include_in_schema=False)
+def get_video_output_segmentation_by_photo_empty(current_user: User = Depends(get_current_user)):
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="Photo ID masih kosong! Silakan sertakan UUID photo_id pada URL (contoh: /by-photo/{photo_id})."
+    )
+
+@router.get("/by-photo/{photo_id}", response_model=VideoOutputSegmentationResponse)
+def get_video_output_segmentation_by_photo(
+    photo_id: UUID, 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
+    if photo_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Photo ID masih kosong atau tidak valid."
+        )
+    photo = db.query(StreetPhoto).filter(StreetPhoto.id == photo_id).first()
+    if not photo:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Foto dengan ID '{photo_id}' tidak ditemukan."
+        )
+
+    video_output = db.query(VideoOutputSegmentation).filter(
+        VideoOutputSegmentation.photo_id == photo_id
+    ).first()
+    
+    if not video_output:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail=f"Hasil segmentasi untuk foto dengan ID '{photo_id}' belum ada."
+        )
+        
+    return video_output
