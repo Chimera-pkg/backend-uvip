@@ -1,12 +1,18 @@
+import os
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
 
 from app.db.database import get_db
-from app.db.models import SegmentationResult, User, StreetPhoto
+from app.db.models import SegmentationResult, User, StreetPhoto, PerceptionPrediction
 from app.schemas.segmentation_result import SegmentationResultCreate, SegmentationResultResponse, SegmentationResultUpdate
 from app.routers.auth import get_current_user
+from app.db.enums import ProcessingStatus
+
+# background task
+from fastapi import BackgroundTasks
+from app.service.ai_service import process_photo_with_ai_task
 
 router = APIRouter(prefix="/segmentation-results", tags=["Segmentation Results"])
 
@@ -47,6 +53,66 @@ def create_segmentation(
     db.refresh(segmentation)
     
     return segmentation
+
+@router.post("/{photo_id}/retry", status_code=status.HTTP_202_ACCEPTED)
+async def retry_photo_processing(
+    photo_id: UUID,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # 1. Cari data foto di database
+    photo = db.query(StreetPhoto).filter(StreetPhoto.id == photo_id).first()
+    
+    if not photo:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Data foto tidak ditemukan di database"
+        )
+
+    # 2. Pastikan file fisik foto masih benar-benar ada di server
+    if not os.path.exists(photo.file_path):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="File fisik foto sudah tidak ada di server, tidak bisa diproses ulang"
+        )
+
+    # 3. Bersihkan hasil AI lama secara berurutan (Cascade Delete) agar tidak error duplikat
+    # A. Hapus Perception Predictions & Shap Values terkait
+    predictions = db.query(PerceptionPrediction).filter(
+        PerceptionPrediction.photo_id == photo_id
+    ).all()
+    prediction_ids = [p.id for p in predictions]
+
+    if prediction_ids:
+        # Hapus SHAP values terlebih dahulu (anak dari prediction)
+        db.query(ShapValue).filter(
+            ShapValue.prediction_id.in_(prediction_ids)
+        ).delete(synchronize_session=False)
+        
+        # Hapus Prediction (anak dari segmentation & photo)
+        db.query(PerceptionPrediction).filter(
+            PerceptionPrediction.id.in_(prediction_ids)
+        ).delete(synchronize_session=False)
+
+    # B. Hapus Segmentation Result lama
+    db.query(SegmentationResult).filter(
+        SegmentationResult.photo_id == photo_id
+    ).delete(synchronize_session=False)
+
+    # 4. Reset status menjadi QUEUED dan hapus log error sebelumnya
+    photo.processing_status = ProcessingStatus.QUEUED
+    photo.error_message = None
+    db.commit()
+
+    # 5. Jalankan ulang background job untuk foto
+    background_tasks.add_task(process_photo_with_ai_task, photo.id, photo.file_path)
+
+    return {
+        "status": "success",
+        "message": "Proses ulang segmentasi foto berhasil dimasukkan ke antrean",
+        "photo_id": str(photo.id)
+    }
 
 @router.get("/", response_model=List[SegmentationResultResponse])
 def list_segmentations(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
