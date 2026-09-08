@@ -5,6 +5,7 @@ from datetime import datetime
 from app.db.enums import PhotoSource, ProcessingStatus
 
 class StreetPhotoCreate(BaseModel):
+    project_id: Optional[UUID] = None
     mission_id: Optional[UUID] = None
     source: PhotoSource
     original_filename: Optional[str] = None
@@ -24,6 +25,7 @@ class StreetPhotoCreate(BaseModel):
     captured_at: datetime
 
 class StreetPhotoUpdate(BaseModel):
+    project_id: Optional[UUID] = None
     mission_id: Optional[UUID] = None
     source: Optional[PhotoSource] = None
     original_filename: Optional[str] = None

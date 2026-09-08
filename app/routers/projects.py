@@ -90,6 +90,10 @@ def list_projects(db: Session = Depends(get_db), current_user: User = Depends(ge
 def get_project(project_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     project = _get_project_or_404(project_id, db)
     stats = _compute_project_stats(project.id, db)
+
+    project.last_opened_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(project)
     return ProjectResponseWithStats(
         **ProjectResponse.model_validate(project).model_dump(),
         **stats,
@@ -108,13 +112,13 @@ def update_project(project_id: UUID, data: ProjectUpdate, db: Session = Depends(
 
 
 # 5. OPEN PROJECT (update last_opened_at)
-@router.put("/{project_id}/open", response_model=ProjectResponse)
-def open_project(project_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    project = _get_project_or_404(project_id, db)
-    project.last_opened_at = datetime.now(timezone.utc)
-    db.commit()
-    db.refresh(project)
-    return project
+# @router.put("/{project_id}/open", response_model=ProjectResponse)
+# def open_project(project_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+#     project = _get_project_or_404(project_id, db)
+#     project.last_opened_at = datetime.now(timezone.utc)
+#     db.commit()
+#     db.refresh(project)
+#     return project
 
 
 # 6. DELETE (cascade: hapus semua foto/video + file fisik + riwayat analisisnya)
