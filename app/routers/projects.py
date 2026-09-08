@@ -60,6 +60,13 @@ def _compute_project_stats(project_id: UUID, db: Session) -> dict:
 # 1. CREATE
 @router.post("/", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
 def create_project(data: ProjectCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    existing_project = db.query(Project).filter(Project.name == data.name).first()
+    if existing_project:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Project dengan nama '{data.name}' sudah ada. Gunakan nama lain."
+        )
+
     project = Project(**data.model_dump(), created_by=current_user.id)
     db.add(project)
     db.commit()
@@ -104,6 +111,20 @@ def get_project(project_id: UUID, db: Session = Depends(get_db), current_user: U
 @router.put("/{project_id}", response_model=ProjectResponse)
 def update_project(project_id: UUID, data: ProjectUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     project = _get_project_or_404(project_id, db)
+    update_data = data.model_dump(exclude_unset=True)
+    
+    if "name" in update_data and update_data["name"] != project.name:
+        existing_project = db.query(Project).filter(
+            Project.name == update_data["name"],
+            Project.id != project_id
+        ).first()
+        
+        if existing_project:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Project dengan nama '{update_data['name']}' sudah digunakan oleh project lain."
+            )
+
     for key, val in data.model_dump(exclude_unset=True).items():
         setattr(project, key, val)
     db.commit()

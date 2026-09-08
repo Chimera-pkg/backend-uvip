@@ -107,7 +107,7 @@ CREATE TABLE mission_assignments (
 -- ==========================================
 CREATE TABLE projects (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(200) NOT NULL,
+    name VARCHAR(200) NOT NULL UNIQUE,
     location VARCHAR(200),
     description TEXT,
     created_by UUID NOT NULL REFERENCES users(id),

@@ -58,7 +58,7 @@ async def upload_street_video(
     longitude: float = Form(...),
     street_name: Optional[str] = Form(None),
     captured_at: datetime = Form(...),
-    project_id: Optional[UUID] = Form(None),
+    project_id: UUID = Form(...),
     mission_id: Optional[UUID] = Form(None),
     gps_accuracy_m: Optional[float] = Form(None),
     compass_azimuth: Optional[float] = Form(None),
