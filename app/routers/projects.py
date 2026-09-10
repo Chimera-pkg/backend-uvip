@@ -91,6 +91,15 @@ def list_projects(db: Session = Depends(get_db), current_user: User = Depends(ge
         ))
     return result
 
+# 2.5. GET TOTAL PROJECT COUNT (Khusus Dashboard Widget)
+@router.get("/count", response_model=dict)
+def get_total_projects(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    total_count = db.query(Project).count()
+    return {
+        "status": "success",
+        "total_projects": total_count
+    }
+
 
 # 3. GET BY ID (dengan stats)
 @router.get("/{project_id}", response_model=ProjectResponseWithStats)
@@ -105,7 +114,6 @@ def get_project(project_id: UUID, db: Session = Depends(get_db), current_user: U
         **ProjectResponse.model_validate(project).model_dump(),
         **stats,
     )
-
 
 # 4. UPDATE
 @router.put("/{project_id}", response_model=ProjectResponse)
