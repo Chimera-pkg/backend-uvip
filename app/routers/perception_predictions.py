@@ -95,3 +95,38 @@ def delete_prediction(prediction_id: UUID, db: Session = Depends(get_db), curren
     db.delete(prediction)
     db.commit()
     return None
+
+@router.get("/by-photo/", include_in_schema=False)
+@router.get("/by-photo", include_in_schema=False)
+def get_prediction_by_photo_empty(current_user: User = Depends(get_current_user)):
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="Photo ID masih kosong! Silakan sertakan UUID photo_id pada URL (contoh: /by-photo/{photo_id})."
+    )
+
+@router.get("/by-photo/{photo_id}", response_model=PerceptionPredictionResponse)
+def get_prediction_by_photo(
+    photo_id: UUID, 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
+    # Pastikan foto-nya ada terlebih dahulu
+    photo = db.query(StreetPhoto).filter(StreetPhoto.id == photo_id).first()
+    if not photo:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Foto dengan ID '{photo_id}' tidak ditemukan."
+        )
+
+    # Ambil data prediction berdasarkan photo_id
+    prediction = db.query(PerceptionPrediction).filter(
+        PerceptionPrediction.photo_id == photo_id
+    ).first()
+    
+    if not prediction:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail=f"Hasil prediksi persepsi untuk foto dengan ID '{photo_id}' belum ada."
+        )
+        
+    return prediction

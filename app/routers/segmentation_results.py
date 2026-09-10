@@ -6,7 +6,7 @@ from uuid import UUID
 
 from app.db.database import get_db
 from app.db.models import SegmentationResult, User, StreetPhoto, PerceptionPrediction
-from app.schemas.segmentation_result import SegmentationResultCreate, SegmentationResultResponse, SegmentationResultUpdate
+from app.schemas.segmentation_result import SegmentationResultCreate, SegmentationResultResponse, SegmentationResultUpdate, SegmentationResultWithPredictionResponse
 from app.routers.auth import get_current_user
 from app.db.enums import ProcessingStatus
 
@@ -153,7 +153,36 @@ def get_segmentation_by_photo_empty(current_user: User = Depends(get_current_use
         detail="Photo ID masih kosong! Silakan sertakan UUID photo_id pada URL (contoh: /by-photo/{photo_id})."
     )
 
-@router.get("/by-photo/{photo_id}", response_model=SegmentationResultResponse)
+# @router.get("/by-photo/{photo_id}", response_model=SegmentationResultResponse)
+# def get_segmentation_by_photo(
+#     photo_id: UUID, 
+#     db: Session = Depends(get_db), 
+#     current_user: User = Depends(get_current_user)
+# ):
+#     if photo_id is None:
+#         raise HTTPException(
+#             status_code=status.HTTP_400_BAD_REQUEST,
+#             detail="Photo ID masih kosong atau tidak valid."
+#         )
+#     photo = db.query(StreetPhoto).filter(StreetPhoto.id == photo_id).first()
+#     if not photo:
+#         raise HTTPException(
+#             status_code=status.HTTP_404_NOT_FOUND,
+#             detail=f"Foto dengan ID '{photo_id}' tidak ditemukan."
+#         )
+
+#     segmentation = db.query(SegmentationResult).filter(
+#         SegmentationResult.photo_id == photo_id
+#     ).first()
+    
+#     if not segmentation:
+#         raise HTTPException(
+#             status_code=status.HTTP_404_NOT_FOUND, 
+#             detail=f"Hasil segmentasi untuk foto dengan ID '{photo_id}' belum ada."
+#         )
+        
+#     return segmentation
+@router.get("/by-photo/{photo_id}", response_model=SegmentationResultWithPredictionResponse)
 def get_segmentation_by_photo(
     photo_id: UUID, 
     db: Session = Depends(get_db), 
@@ -180,5 +209,14 @@ def get_segmentation_by_photo(
             status_code=status.HTTP_404_NOT_FOUND, 
             detail=f"Hasil segmentasi untuk foto dengan ID '{photo_id}' belum ada."
         )
+        
+    # Ambil data perception prediction berdasarkan photo_id
+    prediction = db.query(PerceptionPrediction).filter(
+        PerceptionPrediction.photo_id == photo_id
+    ).first()
+    
+    # Tempelkan object prediction ke atribut segmentation 
+    # (Pydantic akan otomatis membacanya jika atribut diset pada model SQLAlchemy)
+    segmentation.prediction = prediction
         
     return segmentation

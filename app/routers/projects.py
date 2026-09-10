@@ -11,6 +11,7 @@ from app.db.models import Project, StreetPhoto, PerceptionPrediction, User
 from app.routers.auth import get_current_user
 from app.routers.street_photos import execute_full_cascade_delete_photo
 from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectResponse, ProjectResponseWithStats
+from app.schemas.home_dashboard import HomeDashboardResponse
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
@@ -98,6 +99,40 @@ def get_total_projects(db: Session = Depends(get_db), current_user: User = Depen
     return {
         "status": "success",
         "total_projects": total_count
+    }
+
+@router.get("/home-dashboard", response_model=HomeDashboardResponse)
+def get_home_dashboard_stats(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # 1. Hitung total seluruh project
+    total_projects = db.query(Project).count()
+
+    # 2. Hitung rata-rata skor persepsi secara global
+    avg_scores = (
+        db.query(
+            sa_func.avg(PerceptionPrediction.safety_score),
+            sa_func.avg(PerceptionPrediction.beauty_score),
+            sa_func.avg(PerceptionPrediction.comfort_score),
+            sa_func.avg(PerceptionPrediction.uvi_score),
+        )
+        .first()
+    )
+
+    # 3. Amankan nilai jika hasilnya None (misal tabel masih kosong)
+    safety = float(avg_scores[0]) if avg_scores and avg_scores[0] is not None else 0.0
+    beauty = float(avg_scores[1]) if avg_scores and avg_scores[1] is not None else 0.0
+    comfort = float(avg_scores[2]) if avg_scores and avg_scores[2] is not None else 0.0
+    uvi = float(avg_scores[3]) if avg_scores and avg_scores[3] is not None else 0.0
+
+    # Pastikan mengembalikan dictionary yang sesuai persis dengan struktur HomeDashboardResponse
+    return {
+        "status": "success",
+        "total_projects": total_projects,
+        "average_scores": {
+            "safety_score": round(safety, 2),
+            "beauty_score": round(beauty, 2),
+            "comfort_score": round(comfort, 2),
+            "uvi_score": round(uvi, 2),
+        }
     }
 
 
