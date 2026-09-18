@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy import func as sa_func
 from sqlalchemy.orm import Session
@@ -10,8 +10,12 @@ from app.db.database import get_db
 from app.db.models import Project, StreetPhoto, PerceptionPrediction, User
 from app.routers.auth import get_current_user
 from app.routers.street_photos import execute_full_cascade_delete_photo
-from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectResponse, ProjectResponseWithStats
+from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectResponse, ProjectResponseWithStats, PaginatedProjectResponse
 from app.schemas.home_dashboard import HomeDashboardResponse
+
+# pagination
+from math import ceil
+from typing import List, Optional
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
@@ -76,21 +80,68 @@ def create_project(data: ProjectCreate, db: Session = Depends(get_db), current_u
 
 
 # 2. LIST ALL (dengan stats: jumlah media + rata-rata skor)
-@router.get("/", response_model=list[ProjectResponseWithStats])
-def list_projects(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+# @router.get("/", response_model=list[ProjectResponseWithStats])
+# def list_projects(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+#     projects = (
+#         db.query(Project)
+#         .order_by(sa_func.coalesce(Project.last_opened_at, Project.created_at).desc())
+#         .all()
+#     )
+#     result = []
+#     for project in projects:
+#         stats = _compute_project_stats(project.id, db)
+#         result.append(ProjectResponseWithStats(
+#             **ProjectResponse.model_validate(project).model_dump(),
+#             **stats,
+#         ))
+#     return result
+@router.get("/", response_model=PaginatedProjectResponse)
+def list_projects(
+    page: int = Query(1, ge=1, description="Nomor halaman yang ingin diakses"),
+    size: int = Query(10, ge=1, le=100, description="Jumlah data maksimal per halaman"),
+    search: Optional[str] = Query(None, description="Cari project berdasarkan nama"),
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
+    base_query = db.query(Project)
+
+    # (Opsional) Tambahan filter pencarian nama jika dibutuhkan oleh frontend
+    if search:
+        base_query = base_query.filter(Project.name.ilike(f"%{search}%"))
+
+    # Hitung total data keseluruhan setelah filter
+    total_data = base_query.count()
+    
+    # Hitung total halaman (minimal 1 halaman meskipun data kosong)
+    total_pages = ceil(total_data / size) if total_data > 0 else 1
+    
+    # Tentukan offset (skip) untuk pagination database
+    skip = (page - 1) * size
+
+    # Ambil data project sesuai halaman dan batasan size
     projects = (
-        db.query(Project)
+        base_query
         .order_by(sa_func.coalesce(Project.last_opened_at, Project.created_at).desc())
+        .offset(skip)
+        .limit(size)
         .all()
     )
-    result = []
+
+    # Bungkus data project ke dalam format ResponseWithStats
+    result_data = []
     for project in projects:
         stats = _compute_project_stats(project.id, db)
-        result.append(ProjectResponseWithStats(
+        result_data.append(ProjectResponseWithStats(
             **ProjectResponse.model_validate(project).model_dump(),
             **stats,
         ))
-    return result
+
+    return {
+        "total_data": total_data,
+        "total_pages": total_pages,
+        "current_page": page,
+        "data": result_data
+    }
 
 # 2.5. GET TOTAL PROJECT COUNT (Khusus Dashboard Widget)
 @router.get("/count", response_model=dict)
