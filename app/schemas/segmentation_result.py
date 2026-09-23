@@ -16,6 +16,8 @@ class SegmentationResultCreate(BaseModel):
     vehicle_pct: Optional[float] = None
     pedestrian_pct: Optional[float] = None
     street_furniture_pct: Optional[float] = None
+    traffic_sign_pct: Optional[float] = None
+    other: Optional[float] = None
     green_coverage_pct: Optional[float] = None
     building_coverage_pct: Optional[float] = None
     sky_visibility_pct: Optional[float] = None
@@ -40,6 +42,8 @@ class SegmentationResultUpdate(BaseModel):
     vehicle_pct: Optional[float] = None
     pedestrian_pct: Optional[float] = None
     street_furniture_pct: Optional[float] = None
+    traffic_sign_pct: Optional[float] = None
+    other: Optional[float] = None
     green_coverage_pct: Optional[float] = None
     building_coverage_pct: Optional[float] = None
     sky_visibility_pct: Optional[float] = None
@@ -64,6 +68,8 @@ class SegmentationResultResponse(BaseModel):
     vehicle_pct: Optional[float]
     pedestrian_pct: Optional[float]
     street_furniture_pct: Optional[float]
+    traffic_sign_pct: Optional[float]
+    other: Optional[float]
     green_coverage_pct: Optional[float]
     building_coverage_pct: Optional[float]
     sky_visibility_pct: Optional[float]
@@ -87,7 +93,8 @@ class SegmentationResultResponse(BaseModel):
         if v and not v.startswith('http'):
             # Hapus '/' di awal string jika kebetulan ada, lalu gabung dengan IP AI
             clean_path = v.lstrip('/')
-            return f"http://80.241.214.39:8002/{clean_path}"
+            # return f"http://80.241.214.39:8002/{clean_path}"
+            return f"https://seem-modifications-appear-waiver.trycloudflare.com/{clean_path}"
         return v
 
 class SegmentationResultWithPredictionResponse(BaseModel):
@@ -103,6 +110,8 @@ class SegmentationResultWithPredictionResponse(BaseModel):
     vehicle_pct: Optional[float]
     pedestrian_pct: Optional[float]
     street_furniture_pct: Optional[float]
+    traffic_sign_pct: Optional[float]
+    other: Optional[float]
     green_coverage_pct: Optional[float]
     building_coverage_pct: Optional[float]
     sky_visibility_pct: Optional[float]
@@ -127,5 +136,6 @@ class SegmentationResultWithPredictionResponse(BaseModel):
         if v and not v.startswith('http'):
             # Hapus '/' di awal string jika kebetulan ada, lalu gabung dengan IP AI
             clean_path = v.lstrip('/')
-            return f"http://80.241.214.39:8002/{clean_path}"
+            # return f"http://80.241.214.39:8002/{clean_path}"
+            return f"https://seem-modifications-appear-waiver.trycloudflare.com/{clean_path}"
         return v

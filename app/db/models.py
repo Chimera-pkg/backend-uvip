@@ -135,6 +135,8 @@ class SegmentationResult(Base):
     sidewalk_pct = Column(Numeric(5, 2))
     sky_pct = Column(Numeric(5, 2))
     signage_pct = Column(Numeric(5, 2))
+    traffic_sign_pct = Column(Numeric(5, 2))
+    other = Column(Numeric(5, 2))
     vehicle_pct = Column(Numeric(5, 2))
     pedestrian_pct = Column(Numeric(5, 2))
     street_furniture_pct = Column(Numeric(5, 2))

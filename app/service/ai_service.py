@@ -23,7 +23,8 @@ async def process_photo_with_ai_task(photo_id: UUID, file_path: str):
         db.commit()
 
         # 2. Panggil API AI
-        ai_url = "http://80.241.214.39:8002/ai/process"
+        # ai_url = "http://80.241.214.39:8002/ai/process"
+        ai_url = "https://seem-modifications-appear-waiver.trycloudflare.com/ai/process"
         
         async with httpx.AsyncClient(timeout=120.0) as client: # Timeout 2 menit untuk proses AI
             with open(file_path, "rb") as f:
@@ -39,6 +40,9 @@ async def process_photo_with_ai_task(photo_id: UUID, file_path: str):
 
         # 3. Insert Data Segmentation Result
         seg_data = result.get("segmentation_results", {})
+        metric_source = result.get("metrics_source", {})
+        pct_by_class = metric_source.get("pct_by_class", {})
+
         segmentation = SegmentationResult(
             photo_id=photo_id,
             model_name="AI-Pipeline-V1",
@@ -49,7 +53,19 @@ async def process_photo_with_ai_task(photo_id: UUID, file_path: str):
             sky_visibility_pct=seg_data.get("sky_visibility_pct", 0),
             segmentation_url=result.get("segmentation_url", ""),
             privacy_masked_url=result.get("privacy_masked_url", ""),
-            segmentation_overlay_url=result.get("segmentation_overlay_url", "")
+            segmentation_overlay_url=result.get("segmentation_overlay_url", ""),
+
+            road_pct = pct_by_class.get("road", 0),
+            sidewalk_pct = pct_by_class.get("sidewalk", 0),
+            building_pct = pct_by_class.get("building", 0),
+            street_furniture_pct = pct_by_class.get("street_furniture", 0),
+            signage_pct = pct_by_class.get("signage", 0),
+            traffic_sign_pct = pct_by_class.get("traffic_sign", 0),
+            vegetation_pct = pct_by_class.get("vegetation", 0),
+            other = pct_by_class.get("other", 0),
+            sky_pct = pct_by_class.get("sky", 0),
+            pedestrian_pct = pct_by_class.get("pedestrian", 0),
+            vehicle_pct = pct_by_class.get("vehicle", 0)
         )
         db.add(segmentation)
         db.flush() # Flush agar segmentation.id ter-generate untuk tabel child
@@ -97,7 +113,8 @@ async def process_video_with_ai_task(video_id: UUID, file_path: str):
         video.processing_status = ProcessingStatus.SEGMENTING # atau status enum yang relevan
         db.commit()
 
-        ai_post_url = "http://80.241.214.39:8002/ai/process-video"
+        # ai_post_url = "http://80.241.214.39:8002/ai/process-video"
+        ai_post_url = "https://seem-modifications-appear-waiver.trycloudflare.com/ai/process-video"
         
         # 2. POST Video ke AI
         # Menggunakan timeout yang agak panjang untuk antisipasi upload file besar ke server AI
@@ -121,7 +138,8 @@ async def process_video_with_ai_task(video_id: UUID, file_path: str):
                 raise ValueError("Server AI tidak mengembalikan task_id")
 
             # 3. Polling API Result (Mengecek setiap 30 detik)
-            ai_result_url = f"http://80.241.214.39:8002/ai/process-video/result/{task_id}"
+            # ai_result_url = f"http://80.241.214.39:8002/ai/process-video/result/{task_id}"
+            ai_result_url = f"https://seem-modifications-appear-waiver.trycloudflare.com/ai/process-video/result/{task_id}"
             
             while True:
                 result_response = await client.get(ai_result_url, timeout=30.0)

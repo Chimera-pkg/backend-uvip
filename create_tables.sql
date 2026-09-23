@@ -170,6 +170,8 @@ CREATE TABLE segmentation_results (
     vehicle_pct DECIMAL(5, 2),
     pedestrian_pct DECIMAL(5, 2),
     street_furniture_pct DECIMAL(5, 2),
+    traffic_sign_pct DECIMAL(5, 2),
+    other DECIMAL(5, 2),
     
     green_coverage_pct DECIMAL(5, 2),
     building_coverage_pct DECIMAL(5, 2),
