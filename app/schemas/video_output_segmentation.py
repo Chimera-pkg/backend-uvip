@@ -51,5 +51,5 @@ class VideoOutputSegmentationResponse(BaseModel):
             # Hapus '/' di awal string jika kebetulan ada, lalu gabung dengan IP AI
             clean_path = v.lstrip('/')
             # return f"http://80.241.214.39:8002/{clean_path}"
-            return f"https://seem-modifications-appear-waiver.trycloudflare.com/{clean_path}"
+            return f"https://trends-womens-catherine-approval.trycloudflare.com/{clean_path}"
         return v

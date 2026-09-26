@@ -24,7 +24,7 @@ async def process_photo_with_ai_task(photo_id: UUID, file_path: str):
 
         # 2. Panggil API AI
         # ai_url = "http://80.241.214.39:8002/ai/process"
-        ai_url = "https://seem-modifications-appear-waiver.trycloudflare.com/ai/process"
+        ai_url = "https://trends-womens-catherine-approval.trycloudflare.com/ai/process"
         
         async with httpx.AsyncClient(timeout=120.0) as client: # Timeout 2 menit untuk proses AI
             with open(file_path, "rb") as f:
@@ -114,7 +114,7 @@ async def process_video_with_ai_task(video_id: UUID, file_path: str):
         db.commit()
 
         # ai_post_url = "http://80.241.214.39:8002/ai/process-video"
-        ai_post_url = "https://seem-modifications-appear-waiver.trycloudflare.com/ai/process-video"
+        ai_post_url = "https://trends-womens-catherine-approval.trycloudflare.com/ai/process-video"
         
         # 2. POST Video ke AI
         # Menggunakan timeout yang agak panjang untuk antisipasi upload file besar ke server AI
@@ -139,7 +139,7 @@ async def process_video_with_ai_task(video_id: UUID, file_path: str):
 
             # 3. Polling API Result (Mengecek setiap 30 detik)
             # ai_result_url = f"http://80.241.214.39:8002/ai/process-video/result/{task_id}"
-            ai_result_url = f"https://seem-modifications-appear-waiver.trycloudflare.com/ai/process-video/result/{task_id}"
+            ai_result_url = f"https://trends-womens-catherine-approval.trycloudflare.com/ai/process-video/result/{task_id}"
             
             while True:
                 result_response = await client.get(ai_result_url, timeout=30.0)
@@ -162,12 +162,12 @@ async def process_video_with_ai_task(video_id: UUID, file_path: str):
         video_output = VideoOutputSegmentation(
             photo_id=video_id,
             video_url=final_data.get("video_url", ""),
-            fps=video_info.get("fps", 0.0),
-            frame_count=video_info.get("frame_count", 0.0),
+            fps=video_info.get("original_fps", 0.0),
+            # frame_count=video_info.get("frame_count", 0.0),
             width=video_info.get("width", 0.0),
             height=video_info.get("height", 0.0),
-            duration_seconds=video_info.get("duration_seconds", 0.0),
-            frames_processed=final_data.get("frames_processed", 0.0),
+            # duration_seconds=video_info.get("duration_seconds", 0.0),
+            frames_processed=final_data.get("total_frames", 0.0),
             processing_time_ms=final_data.get("processing_time_ms", 0.0)
         )
         db.add(video_output)
