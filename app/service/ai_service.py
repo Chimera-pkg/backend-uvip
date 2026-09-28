@@ -171,6 +171,47 @@ async def process_video_with_ai_task(video_id: UUID, file_path: str):
             processing_time_ms=final_data.get("processing_time_ms", 0.0)
         )
         db.add(video_output)
+        db.flush()
+
+        seg_data = final_data.get("segmentation_results", {})
+        metric_source = final_data.get("metrics_source", {})
+        pct_by_class = metric_source.get("pct_by_class", {})
+
+        segmentation = SegmentationResult(
+            photo_id=video_id,
+            model_name="AI-Pipeline-V1",
+            green_coverage_pct=seg_data.get("green_coverage_pct", 0),
+            building_coverage_pct=seg_data.get("building_coverage_pct", 0),
+            walkability_ratio=seg_data.get("walkability_ratio", 0),
+            visual_clutter_index=seg_data.get("visual_clutter_index", 0),
+            sky_visibility_pct=seg_data.get("sky_visibility_pct", 0),
+
+            road_pct = pct_by_class.get("road", 0),
+            sidewalk_pct = pct_by_class.get("sidewalk", 0),
+            building_pct = pct_by_class.get("building", 0),
+            street_furniture_pct = pct_by_class.get("street_furniture", 0),
+            signage_pct = pct_by_class.get("signage", 0),
+            traffic_sign_pct = pct_by_class.get("traffic_sign", 0),
+            vegetation_pct = pct_by_class.get("vegetation", 0),
+            other = pct_by_class.get("other", 0),
+            sky_pct = pct_by_class.get("sky", 0),
+            pedestrian_pct = pct_by_class.get("pedestrian", 0),
+            vehicle_pct = pct_by_class.get("vehicle", 0)
+        )
+        db.add(segmentation)
+        db.flush() # Flush agar segmentation.id ter-generate untuk tabel child
+
+        # 4. Insert Data Perception Prediction
+        perc_data = final_data.get("perception_prediction", {})
+        prediction = PerceptionPrediction(
+            photo_id=video_id,
+            segmentation_id=segmentation.id, # Terhubung ke relasi segmentasi
+            beauty_score=perc_data.get("beauty_score", 0),
+            safety_score=perc_data.get("safety_score", 0),
+            comfort_score=perc_data.get("comfort_score", 0),
+            uvi_score=perc_data.get("uvi_score", 0)
+        )
+        db.add(prediction)
 
         # 5. Update Status StreetPhoto menjadi selesai
         video.processing_status = ProcessingStatus.COMPLETED

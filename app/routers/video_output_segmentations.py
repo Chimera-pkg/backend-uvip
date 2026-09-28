@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
-from app.db.models import VideoOutputSegmentation, StreetPhoto, User
+from app.db.models import VideoOutputSegmentation, StreetPhoto, User, SegmentationResult, PerceptionPrediction
 from app.schemas.video_output_segmentation import (
     VideoOutputSegmentationCreate,
     VideoOutputSegmentationUpdate,
@@ -223,5 +223,16 @@ def get_video_output_segmentation_by_photo(
             status_code=status.HTTP_404_NOT_FOUND, 
             detail=f"Hasil segmentasi untuk foto dengan ID '{photo_id}' belum ada."
         )
+
+    segmentation = db.query(SegmentationResult).filter(
+        SegmentationResult.photo_id == photo_id
+    ).first()
+
+    prediction = db.query(PerceptionPrediction).filter(
+        PerceptionPrediction.photo_id == photo_id
+    ).first()
+    
+    video_output.segmentation = segmentation
+    video_output.prediction = prediction
         
     return video_output

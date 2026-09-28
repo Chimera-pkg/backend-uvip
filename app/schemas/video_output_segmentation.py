@@ -3,6 +3,8 @@ from typing import Optional
 from uuid import UUID
 from datetime import datetime
 from app.db.enums import ModelType
+from app.schemas.perception_prediction import PerceptionPredictionResponse
+from app.schemas.segmentation_result import SegmentationResultResponse
 
 class VideoOutputSegmentationCreate(BaseModel):
     photo_id: UUID
@@ -38,6 +40,8 @@ class VideoOutputSegmentationResponse(BaseModel):
     frames_processed: Optional[float] = None
     processing_time_ms: Optional[float] = None
     created_at: datetime
+    segmentation: Optional[SegmentationResultResponse] = None
+    prediction: Optional[PerceptionPredictionResponse] = None
 
     class Config:
         from_attributes = True
