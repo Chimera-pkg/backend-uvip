@@ -80,21 +80,6 @@ def create_project(data: ProjectCreate, db: Session = Depends(get_db), current_u
 
 
 # 2. LIST ALL (dengan stats: jumlah media + rata-rata skor)
-# @router.get("/", response_model=list[ProjectResponseWithStats])
-# def list_projects(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-#     projects = (
-#         db.query(Project)
-#         .order_by(sa_func.coalesce(Project.last_opened_at, Project.created_at).desc())
-#         .all()
-#     )
-#     result = []
-#     for project in projects:
-#         stats = _compute_project_stats(project.id, db)
-#         result.append(ProjectResponseWithStats(
-#             **ProjectResponse.model_validate(project).model_dump(),
-#             **stats,
-#         ))
-#     return result
 @router.get("/", response_model=PaginatedProjectResponse)
 def list_projects(
     page: int = Query(1, ge=1, description="Nomor halaman yang ingin diakses"),
