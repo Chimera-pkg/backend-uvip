@@ -3,6 +3,7 @@ from typing import Optional
 from uuid import UUID
 from datetime import datetime
 from app.schemas.perception_prediction import PerceptionPredictionResponse
+from app.schemas.project import ProjectResponse
 
 class SegmentationResultCreate(BaseModel):
     photo_id: UUID
@@ -124,6 +125,7 @@ class SegmentationResultWithPredictionResponse(BaseModel):
     inference_time_ms: Optional[int]
     created_at: datetime
     prediction: Optional[PerceptionPredictionResponse] = None
+    project: Optional[ProjectResponse] = None
 
     class Config:
         from_attributes = True

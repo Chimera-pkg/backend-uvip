@@ -5,7 +5,7 @@ from typing import List
 from uuid import UUID
 
 from app.db.database import get_db
-from app.db.models import SegmentationResult, User, StreetPhoto, PerceptionPrediction
+from app.db.models import SegmentationResult, User, StreetPhoto, PerceptionPrediction, Project
 from app.schemas.segmentation_result import SegmentationResultCreate, SegmentationResultResponse, SegmentationResultUpdate, SegmentationResultWithPredictionResponse
 from app.routers.auth import get_current_user
 from app.db.enums import ProcessingStatus
@@ -215,8 +215,13 @@ def get_segmentation_by_photo(
         PerceptionPrediction.photo_id == photo_id
     ).first()
     
+    project = db.query(Project).filter(
+        Project.id == photo.project_id
+    ).first()
+    
     # Tempelkan object prediction ke atribut segmentation 
     # (Pydantic akan otomatis membacanya jika atribut diset pada model SQLAlchemy)
     segmentation.prediction = prediction
+    segmentation.project = project
         
     return segmentation
