@@ -5,6 +5,7 @@ from datetime import datetime
 from app.db.enums import ModelType
 from app.schemas.perception_prediction import PerceptionPredictionResponse
 from app.schemas.segmentation_result import SegmentationResultResponse
+from app.schemas.project import ProjectResponse
 
 class VideoOutputSegmentationCreate(BaseModel):
     photo_id: UUID
@@ -42,6 +43,7 @@ class VideoOutputSegmentationResponse(BaseModel):
     created_at: datetime
     segmentation: Optional[SegmentationResultResponse] = None
     prediction: Optional[PerceptionPredictionResponse] = None
+    project: Optional[ProjectResponse] = None
 
     class Config:
         from_attributes = True

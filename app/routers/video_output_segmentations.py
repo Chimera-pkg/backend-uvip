@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
-from app.db.models import VideoOutputSegmentation, StreetPhoto, User, SegmentationResult, PerceptionPrediction
+from app.db.models import VideoOutputSegmentation, StreetPhoto, User, SegmentationResult, PerceptionPrediction, Project
 from app.schemas.video_output_segmentation import (
     VideoOutputSegmentationCreate,
     VideoOutputSegmentationUpdate,
@@ -231,8 +231,13 @@ def get_video_output_segmentation_by_photo(
     prediction = db.query(PerceptionPrediction).filter(
         PerceptionPrediction.photo_id == photo_id
     ).first()
+
+    project = db.query(Project).filter(
+        Project.id == photo.project_id
+    ).first()
     
     video_output.segmentation = segmentation
     video_output.prediction = prediction
+    video_output.project = project
         
     return video_output
