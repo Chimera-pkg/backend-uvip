@@ -28,7 +28,7 @@ from app.routers.auth import get_current_user
 from app.routers.segmentation_results import create_segmentation
 from app.routers.street_photos import execute_full_cascade_delete_photo
 from app.schemas.segmentation_result import SegmentationResultCreate
-from app.schemas.street_photo import StreetPhotoResponse, StreetPhotoUpdate, PaginatedStreetPhotoResponse
+from app.schemas.street_photo import StreetPhotoResponse, StreetPhotoUpdate, PaginatedStreetPhotoResponse, PaginatedStreetPhotoLocationResponse
 
 # pagination
 from fastapi import Query
@@ -177,6 +177,40 @@ def list_videos(
     total_data = base_query.count()
     total_pages = ceil(total_data / size) if total_data > 0 else 1
     skip = (page - 1) * size
+    photos = base_query.order_by(StreetPhoto.created_at.desc()).offset(skip).limit(size).all()
+
+    return {
+        "total_data": total_data,
+        "total_pages": total_pages,
+        "current_page": page,
+        "data": photos
+    }
+
+@router.get("/locations", response_model=PaginatedStreetPhotoLocationResponse)
+def list_photo_locations(
+    page: int = Query(1, ge=1, description="Nomor halaman yang ingin diakses"),
+    size: int = Query(10, ge=1, le=100, description="Jumlah data maksimal per halaman"),
+    project_id: Optional[str] = Query(None, description="Filter berdasarkan project (UUID atau 'unassigned' untuk media tanpa project)"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Base query disamakan persis dengan existing untuk menyaring foto berdasarkan direktori
+    base_query = db.query(StreetPhoto).filter(
+        StreetPhoto.file_path.ilike(f"{VIDEO_UPLOAD_DIR}/%")
+    )
+
+    # Filter project_id persis seperti existing
+    if project_id:
+        if project_id.lower() == "unassigned":
+            base_query = base_query.filter(StreetPhoto.project_id.is_(None))
+        else:
+            base_query = base_query.filter(StreetPhoto.project_id == project_id)
+
+    total_data = base_query.count()
+    total_pages = ceil(total_data / size) if total_data > 0 else 1
+    skip = (page - 1) * size
+    
+    # Ambil data dari database dengan urutan dan pagination yang sama
     photos = base_query.order_by(StreetPhoto.created_at.desc()).offset(skip).limit(size).all()
 
     return {

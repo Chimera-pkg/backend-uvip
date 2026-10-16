@@ -185,6 +185,7 @@ CREATE TABLE segmentation_results (
     segmentation_overlay_url VARCHAR(500),
     inference_time_ms INTEGER,
     seluruh_percentage DECIMAL(5, 2),
+    llm_advice_response JSON,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

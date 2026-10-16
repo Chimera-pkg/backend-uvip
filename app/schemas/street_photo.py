@@ -78,3 +78,24 @@ class PaginatedStreetPhotoResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+class StreetPhotoLocationResponse(BaseModel):
+    id: UUID
+    original_filename: Optional[str] = None
+    latitude: float
+    longitude: float
+    # geom bisa direpresentasikan sebagai string (WKT) atau opsional sesuai kebutuhan GeoAlchemy2, 
+    # atau cukup diabaikan di response jika frontend hanya butuh lat/long, tapi mari kita sertakan string representation-nya jika dikonversi.
+    # Jika menggunakan WKTElement/Geometry dari PostGIS, biasanya dikonversi otomatis atau dibiarkan jika dideklarasikan sbg Any/str.
+    
+    class Config:
+        from_attributes = True
+
+class PaginatedStreetPhotoLocationResponse(BaseModel):
+    total_data: int
+    total_pages: int
+    current_page: int
+    data: List[StreetPhotoLocationResponse]
+    
+    class Config:
+        from_attributes = True

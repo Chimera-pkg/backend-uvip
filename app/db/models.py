@@ -1,7 +1,7 @@
 import uuid
 from sqlalchemy import (
     Column, String, Boolean, Integer, Numeric, Text, DateTime,
-    ForeignKey, UniqueConstraint, func
+    ForeignKey, UniqueConstraint, func, JSON
 )
 from sqlalchemy.dialects.postgresql import UUID, ENUM
 from geoalchemy2 import Geometry
@@ -151,6 +151,7 @@ class SegmentationResult(Base):
     segmentation_overlay_url = Column(String(500))
     inference_time_ms = Column(Integer)
     seluruh_percentage = Column(Numeric(5, 2))
+    llm_advice_response = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class PerceptionPrediction(Base):

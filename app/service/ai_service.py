@@ -82,7 +82,35 @@ async def process_photo_with_ai_task(photo_id: UUID, file_path: str):
         )
         db.add(prediction)
 
-        # 5. Update Status Foto Selesai
+        # photo.privacy_masked = True if result.get("privacy_masked_url") else False
+        # photo.processing_status = ProcessingStatus.COMPLETED
+        db.commit()
+
+        # tambahan advise
+        try:
+            llm_advice_url = "https://tip-country-replace-intellectual.trycloudflare.com/llm/advise"
+            
+            # Menyesuaikan struktur form-data sesuai referensi gambar Postman kamu
+            async with httpx.AsyncClient(timeout=90.0) as client:
+                with open(file_path, "rb") as f:
+                    files_payload = {"file": (os.path.basename(file_path), f, "image/jpeg")}
+                    data_payload = {
+                        "detail": "high"
+                        # Tambahkan field form data lain jika diperlukan (scores, metrics, dll)
+                    }
+                    
+                    llm_response = await client.post(llm_advice_url, data=data_payload, files=files_payload)
+                    
+                    if llm_response.status_code == 200:
+                        llm_json_data = llm_response.json()
+                        # Simpan full JSON response ke kolom baru
+                        segmentation.llm_advice_response = llm_json_data
+                        db.commit()
+        except Exception as llm_err:
+            # Jika LLM advise gagal, kita tangkap errornya tanpa menggagalkan proses utama segmentasi
+            print(f"Warning: Gagal mengambil LLM advice: {str(llm_err)}")
+
+        # 6. Update Status Foto Selesai
         photo.privacy_masked = True if result.get("privacy_masked_url") else False
         photo.processing_status = ProcessingStatus.COMPLETED
         db.commit()
