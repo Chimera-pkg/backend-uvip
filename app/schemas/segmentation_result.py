@@ -126,6 +126,7 @@ class SegmentationResultWithPredictionResponse(BaseModel):
     created_at: datetime
     prediction: Optional[PerceptionPredictionResponse] = None
     project: Optional[ProjectResponse] = None
+    llm_advice_response: Optional[dict] = None
 
     class Config:
         from_attributes = True
