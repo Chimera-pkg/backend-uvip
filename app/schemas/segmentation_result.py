@@ -95,7 +95,7 @@ class SegmentationResultResponse(BaseModel):
             # Hapus '/' di awal string jika kebetulan ada, lalu gabung dengan IP AI
             clean_path = v.lstrip('/')
             # return f"http://80.241.214.39:8002/{clean_path}"
-            return f"https://tip-country-replace-intellectual.trycloudflare.com/{clean_path}"
+            return f"https://auctions-chemicals-latitude-typing.trycloudflare.com/{clean_path}"
         return v
 
 class SegmentationResultWithPredictionResponse(BaseModel):
@@ -140,5 +140,5 @@ class SegmentationResultWithPredictionResponse(BaseModel):
             # Hapus '/' di awal string jika kebetulan ada, lalu gabung dengan IP AI
             clean_path = v.lstrip('/')
             # return f"http://80.241.214.39:8002/{clean_path}"
-            return f"https://tip-country-replace-intellectual.trycloudflare.com/{clean_path}"
+            return f"https://auctions-chemicals-latitude-typing.trycloudflare.com/{clean_path}"
         return v
