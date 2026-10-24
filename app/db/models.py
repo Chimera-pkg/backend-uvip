@@ -149,6 +149,8 @@ class SegmentationResult(Base):
     segmentation_url = Column(String(500))
     privacy_masked_url = Column(String(500))
     segmentation_overlay_url = Column(String(500))
+    original_image_url = Column(String(500))
+    result_url = Column(String(500))
     inference_time_ms = Column(Integer)
     seluruh_percentage = Column(Numeric(5, 2))
     llm_advice_response = Column(JSON, nullable=True)
@@ -167,6 +169,7 @@ class PerceptionPrediction(Base):
     gvi_score = Column(Numeric(5, 2))
     inference_time_ms = Column(Integer)
     r2_reference = Column(Numeric(4, 3))
+    llm_generate_response = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class ShapValue(Base):

@@ -183,6 +183,8 @@ CREATE TABLE segmentation_results (
     segmentation_url VARCHAR(500),
     privacy_masked_url VARCHAR(500),
     segmentation_overlay_url VARCHAR(500),
+    original_image_url VARCHAR(500),
+    result_url VARCHAR(500),
     inference_time_ms INTEGER,
     seluruh_percentage DECIMAL(5, 2),
     llm_advice_response JSON,
@@ -206,6 +208,7 @@ CREATE TABLE perception_predictions (
     gvi_score DECIMAL(5, 2),
     inference_time_ms INTEGER,
     r2_reference DECIMAL(4, 3),
+    llm_generate_response JSON,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

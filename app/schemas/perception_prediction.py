@@ -40,6 +40,7 @@ class PerceptionPredictionResponse(BaseModel):
     inference_time_ms: Optional[int]
     r2_reference: Optional[float]
     created_at: datetime
+    llm_generate_response: Optional[dict] = None
 
     class Config:
         from_attributes = True

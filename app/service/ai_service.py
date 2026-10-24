@@ -54,6 +54,8 @@ async def process_photo_with_ai_task(photo_id: UUID, file_path: str):
             segmentation_url=result.get("segmentation_url", ""),
             privacy_masked_url=result.get("privacy_masked_url", ""),
             segmentation_overlay_url=result.get("segmentation_overlay_url", ""),
+            original_image_url=result.get("original_image_url", ""),
+            result_url=result.get("result_url", ""),
 
             road_pct = pct_by_class.get("road", 0),
             sidewalk_pct = pct_by_class.get("sidewalk", 0),
@@ -110,7 +112,32 @@ async def process_photo_with_ai_task(photo_id: UUID, file_path: str):
             # Jika LLM advise gagal, kita tangkap errornya tanpa menggagalkan proses utama segmentasi
             print(f"Warning: Gagal mengambil LLM advice: {str(llm_err)}")
 
-        # 6. Update Status Foto Selesai
+        # 6. Tambahan Hit API BARU: /llm/generate
+        try:
+            llm_generate_url = "https://auctions-chemicals-latitude-typing.trycloudflare.com/llm/generate"
+            
+            # Mengambil nilai dari kolom hasil segmentasi (result_url dan original_image_url)
+            generate_payload = {
+                "result": segmentation.result_url or "",
+                "photo_path": segmentation.original_image_url or "",
+                "prompt": "",      # Kosongkan atau sesuaikan jika ada parameter prompt opsional
+                "model": "gpt-image-2.5-flare-2026-09-08",
+                "size": "",
+                "count": ""
+            }
+            
+            async with httpx.AsyncClient(timeout=90.0) as client:
+                generate_response = await client.post(llm_generate_url, data=generate_payload)
+                
+                if generate_response.status_code == 200:
+                    generate_json_data = generate_response.json()
+                    # Simpan full JSON response ke kolom baru di tabel perception_predictions
+                    prediction.llm_generate_response = generate_json_data
+                    db.commit()
+        except Exception as gen_err:
+            print(f"Warning: Gagal mengambil LLM generate: {str(gen_err)}")
+
+        # 7. Update Status Foto Selesai
         photo.privacy_masked = True if result.get("privacy_masked_url") else False
         photo.processing_status = ProcessingStatus.COMPLETED
         db.commit()
