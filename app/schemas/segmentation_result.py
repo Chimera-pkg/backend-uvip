@@ -101,6 +101,9 @@ class SegmentationResultResponse(BaseModel):
 class SegmentationResultWithPredictionResponse(BaseModel):
     id: UUID
     photo_id: UUID
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    street_name: Optional[str] = None
     model_name: str
     vegetation_pct: Optional[float]
     building_pct: Optional[float]

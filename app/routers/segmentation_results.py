@@ -221,6 +221,9 @@ def get_segmentation_by_photo(
     
     # Tempelkan object prediction ke atribut segmentation 
     # (Pydantic akan otomatis membacanya jika atribut diset pada model SQLAlchemy)
+    segmentation.latitude = photo.latitude
+    segmentation.longitude = photo.longitude
+    segmentation.street_name = photo.street_name
     segmentation.prediction = prediction
     segmentation.project = project
         

@@ -32,6 +32,9 @@ class VideoOutputSegmentationUpdate(BaseModel):
 class VideoOutputSegmentationResponse(BaseModel):
     id: UUID
     photo_id: UUID
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    street_name: Optional[str] = None
     video_url: Optional[str] = None
     fps: Optional[float] = None
     frame_count: Optional[float] = None

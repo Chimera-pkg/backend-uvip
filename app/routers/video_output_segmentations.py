@@ -236,6 +236,10 @@ def get_video_output_segmentation_by_photo(
         Project.id == photo.project_id
     ).first()
     
+    video_output.latitude = photo.latitude
+    video_output.longitude = photo.longitude
+    video_output.street_name = photo.street_name
+
     video_output.segmentation = segmentation
     video_output.prediction = prediction
     video_output.project = project
