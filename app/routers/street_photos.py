@@ -287,8 +287,13 @@ def list_photo_locations(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Base query tanpa filter UPLOAD_DIR (mengambil seluruh data)
-    base_query = db.query(StreetPhoto)
+    # Query langsung mengambil objek StreetPhoto dan kolom uvi_score secara bersamaan
+    base_query = db.query(
+        StreetPhoto, 
+        PerceptionPrediction.uvi_score
+    ).outerjoin(
+        PerceptionPrediction, StreetPhoto.id == PerceptionPrediction.photo_id
+    )
 
     # Filter project bersifat opsional
     if project_id:
@@ -297,10 +302,41 @@ def list_photo_locations(
         else:
             base_query = base_query.filter(StreetPhoto.project_id == project_id)
 
-    # Ambil seluruh data tanpa offset, limit, atau hitung total halaman
-    photos = base_query.order_by(StreetPhoto.created_at.desc()).all()
+    # Eksekusi query (hasilnya berupa list of tuple: (StreetPhoto, uvi_score))
+    results = base_query.order_by(StreetPhoto.created_at.desc()).all()
 
-    return photos
+    # Mapping ke format Pydantic response
+    response_list = []
+    for photo, uvi_score in results:
+        response_list.append({
+            "id": photo.id,
+            "original_filename": photo.original_filename,
+            "latitude": photo.latitude,
+            "longitude": photo.longitude,
+            "uvi_score": uvi_score  # Langsung didapat dari hasil join kolom
+        })
+
+    return response_list
+# @router.get("/locations", response_model=List[StreetPhotoLocationResponse])
+# def list_photo_locations(
+#     project_id: Optional[str] = Query(None, description="Filter opsional berdasarkan project (UUID atau 'unassigned' untuk media tanpa project)"),
+#     db: Session = Depends(get_db),
+#     current_user: User = Depends(get_current_user)
+# ):
+#     # Base query tanpa filter UPLOAD_DIR (mengambil seluruh data)
+#     base_query = db.query(StreetPhoto)
+
+#     # Filter project bersifat opsional
+#     if project_id:
+#         if project_id.lower() == "unassigned":
+#             base_query = base_query.filter(StreetPhoto.project_id.is_(None))
+#         else:
+#             base_query = base_query.filter(StreetPhoto.project_id == project_id)
+
+#     # Ambil seluruh data tanpa offset, limit, atau hitung total halaman
+#     photos = base_query.order_by(StreetPhoto.created_at.desc()).all()
+
+#     return photos
 
 
 # 3. READ BY ID

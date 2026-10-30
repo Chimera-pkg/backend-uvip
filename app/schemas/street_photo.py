@@ -84,6 +84,7 @@ class StreetPhotoLocationResponse(BaseModel):
     original_filename: Optional[str] = None
     latitude: float
     longitude: float
+    uvi_score: Optional[float] = None
     # geom bisa direpresentasikan sebagai string (WKT) atau opsional sesuai kebutuhan GeoAlchemy2, 
     # atau cukup diabaikan di response jika frontend hanya butuh lat/long, tapi mari kita sertakan string representation-nya jika dikonversi.
     # Jika menggunakan WKTElement/Geometry dari PostGIS, biasanya dikonversi otomatis atau dibiarkan jika dideklarasikan sbg Any/str.
