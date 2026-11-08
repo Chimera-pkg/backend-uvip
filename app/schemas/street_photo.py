@@ -4,6 +4,7 @@ from uuid import UUID
 from datetime import datetime
 from app.db.enums import PhotoSource, ProcessingStatus
 from app.schemas.perception_prediction import PerceptionPredictionScoreResponse
+from app.schemas.project import ProjectResponse
 
 class StreetPhotoCreate(BaseModel):
     project_id: Optional[UUID] = None
@@ -66,6 +67,7 @@ class StreetPhotoResponse(BaseModel):
     processing_status: ProcessingStatus
     error_message: Optional[str]
     prediction: Optional[PerceptionPredictionScoreResponse] = None
+    project: Optional[ProjectResponse] = None
     captured_at: datetime
     created_at: datetime
 

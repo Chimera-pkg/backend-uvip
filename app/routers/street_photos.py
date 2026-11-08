@@ -262,8 +262,10 @@ def list_photos(
     # base_query = db.query(StreetPhoto).filter(
     #     StreetPhoto.file_path.ilike(f"{UPLOAD_DIR}/%")
     # )
-    base_query = db.query(StreetPhoto, PerceptionPrediction).outerjoin(
+    base_query = db.query(StreetPhoto, PerceptionPrediction, Project).outerjoin(
         PerceptionPrediction, StreetPhoto.id == PerceptionPrediction.photo_id
+    ).outerjoin(
+        Project, StreetPhoto.project_id == Project.id
     ).filter(
         StreetPhoto.file_path.ilike(f"{UPLOAD_DIR}/%")
     )
@@ -283,7 +285,7 @@ def list_photos(
 
     # Mapping hasil query ke dalam bentuk list dictionary atau objek yang sesuai dengan StreetPhotoResponse
     formatted_data = []
-    for photo, prediction in results:
+    for photo, prediction, project in results:
         # Ubah objek StreetPhoto menjadi dictionary dasar
         photo_dict = {
             "id": photo.id,
@@ -307,8 +309,8 @@ def list_photos(
             "error_message": photo.error_message,
             "captured_at": photo.captured_at,
             "created_at": photo.created_at,
-            # Masukkan data prediction jika ada (otomatis divalidasi oleh PerceptionPredictionResponse)
-            "prediction": prediction if prediction else None
+            "prediction": prediction if prediction else None,
+            "project": project if project else None
         }
         formatted_data.append(photo_dict)
 
