@@ -44,3 +44,15 @@ class PerceptionPredictionResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class PerceptionPredictionScoreResponse(BaseModel):
+    id: UUID
+    segmentation_id: Optional[UUID]
+    beauty_score: Optional[float]
+    safety_score: Optional[float]
+    comfort_score: Optional[float]
+    uvi_score: Optional[float]
+    gvi_score: Optional[float]
+
+    class Config:
+        from_attributes = True

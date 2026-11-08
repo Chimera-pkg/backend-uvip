@@ -3,6 +3,7 @@ from typing import Optional, List
 from uuid import UUID
 from datetime import datetime
 from app.db.enums import PhotoSource, ProcessingStatus
+from app.schemas.perception_prediction import PerceptionPredictionScoreResponse
 
 class StreetPhotoCreate(BaseModel):
     project_id: Optional[UUID] = None
@@ -64,6 +65,7 @@ class StreetPhotoResponse(BaseModel):
     privacy_masked: bool
     processing_status: ProcessingStatus
     error_message: Optional[str]
+    prediction: Optional[PerceptionPredictionScoreResponse] = None
     captured_at: datetime
     created_at: datetime
 

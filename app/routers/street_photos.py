@@ -259,7 +259,12 @@ def list_photos(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    base_query = db.query(StreetPhoto).filter(
+    # base_query = db.query(StreetPhoto).filter(
+    #     StreetPhoto.file_path.ilike(f"{UPLOAD_DIR}/%")
+    # )
+    base_query = db.query(StreetPhoto, PerceptionPrediction).outerjoin(
+        PerceptionPrediction, StreetPhoto.id == PerceptionPrediction.photo_id
+    ).filter(
         StreetPhoto.file_path.ilike(f"{UPLOAD_DIR}/%")
     )
 
@@ -272,13 +277,46 @@ def list_photos(
     total_data = base_query.count()
     total_pages = ceil(total_data / size) if total_data > 0 else 1
     skip = (page - 1) * size
-    photos = base_query.order_by(StreetPhoto.created_at.desc()).offset(skip).limit(size).all()
+    # photos = base_query.order_by(StreetPhoto.created_at.desc()).offset(skip).limit(size).all()
+    # Hasil query berupa list of tuple: (StreetPhoto, PerceptionPrediction)
+    results = base_query.order_by(StreetPhoto.created_at.desc()).offset(skip).limit(size).all()
+
+    # Mapping hasil query ke dalam bentuk list dictionary atau objek yang sesuai dengan StreetPhotoResponse
+    formatted_data = []
+    for photo, prediction in results:
+        # Ubah objek StreetPhoto menjadi dictionary dasar
+        photo_dict = {
+            "id": photo.id,
+            "project_id": photo.project_id,
+            "mission_id": photo.mission_id,
+            "uploaded_by": photo.uploaded_by,
+            "source": photo.source,
+            "original_filename": photo.original_filename,
+            "file_path": photo.file_path,
+            "file_size_kb": photo.file_size_kb,
+            "latitude": photo.latitude,
+            "longitude": photo.longitude,
+            "street_name": photo.street_name,
+            "gps_accuracy_m": photo.gps_accuracy_m,
+            "compass_azimuth": photo.compass_azimuth,
+            "exif_timestamp": photo.exif_timestamp,
+            "is_manual_capture": photo.is_manual_capture,
+            "is_offline_sync": photo.is_offline_sync,
+            "privacy_masked": photo.privacy_masked,
+            "processing_status": photo.processing_status,
+            "error_message": photo.error_message,
+            "captured_at": photo.captured_at,
+            "created_at": photo.created_at,
+            # Masukkan data prediction jika ada (otomatis divalidasi oleh PerceptionPredictionResponse)
+            "prediction": prediction if prediction else None
+        }
+        formatted_data.append(photo_dict)
 
     return {
         "total_data": total_data,
         "total_pages": total_pages,
         "current_page": page,
-        "data": photos
+        "data": formatted_data
     }
 
 @router.get("/locations", response_model=List[StreetPhotoLocationResponse])
