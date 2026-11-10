@@ -80,6 +80,53 @@ def create_project(data: ProjectCreate, db: Session = Depends(get_db), current_u
 
 
 # 2. LIST ALL (dengan stats: jumlah media + rata-rata skor)
+# @router.get("/", response_model=PaginatedProjectResponse)
+# def list_projects(
+#     page: int = Query(1, ge=1, description="Nomor halaman yang ingin diakses"),
+#     size: int = Query(10, ge=1, le=100, description="Jumlah data maksimal per halaman"),
+#     search: Optional[str] = Query(None, description="Cari project berdasarkan nama"),
+#     db: Session = Depends(get_db), 
+#     current_user: User = Depends(get_current_user)
+# ):
+#     base_query = db.query(Project)
+
+#     # (Opsional) Tambahan filter pencarian nama jika dibutuhkan oleh frontend
+#     if search:
+#         base_query = base_query.filter(Project.name.ilike(f"%{search}%"))
+
+#     # Hitung total data keseluruhan setelah filter
+#     total_data = base_query.count()
+    
+#     # Hitung total halaman (minimal 1 halaman meskipun data kosong)
+#     total_pages = ceil(total_data / size) if total_data > 0 else 1
+    
+#     # Tentukan offset (skip) untuk pagination database
+#     skip = (page - 1) * size
+
+#     # Ambil data project sesuai halaman dan batasan size
+#     projects = (
+#         base_query
+#         .order_by(sa_func.coalesce(Project.last_opened_at, Project.created_at).desc())
+#         .offset(skip)
+#         .limit(size)
+#         .all()
+#     )
+
+#     # Bungkus data project ke dalam format ResponseWithStats
+#     result_data = []
+#     for project in projects:
+#         stats = _compute_project_stats(project.id, db)
+#         result_data.append(ProjectResponseWithStats(
+#             **ProjectResponse.model_validate(project).model_dump(),
+#             **stats,
+#         ))
+
+#     return {
+#         "total_data": total_data,
+#         "total_pages": total_pages,
+#         "current_page": page,
+#         "data": result_data
+#     }
 @router.get("/", response_model=PaginatedProjectResponse)
 def list_projects(
     page: int = Query(1, ge=1, description="Nomor halaman yang ingin diakses"),
@@ -88,7 +135,14 @@ def list_projects(
     db: Session = Depends(get_db), 
     current_user: User = Depends(get_current_user)
 ):
+    # Cek apakah user adalah admin (sesuaikan atribut role/is_admin dengan model User kamu)
+    is_admin = getattr(current_user, "is_admin", False) or getattr(current_user, "role", "") == "admin"
+
     base_query = db.query(Project)
+
+    # Terapkan filter kepemilikan project jika bukan admin
+    if not is_admin:
+        base_query = base_query.filter(Project.created_by == current_user.id)
 
     # (Opsional) Tambahan filter pencarian nama jika dibutuhkan oleh frontend
     if search:
@@ -129,37 +183,99 @@ def list_projects(
     }
 
 # 2.5. GET TOTAL PROJECT COUNT (Khusus Dashboard Widget)
+# @router.get("/count", response_model=dict)
+# def get_total_projects(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+#     total_count = db.query(Project).count()
+#     return {
+#         "status": "success",
+#         "total_projects": total_count
+#     }
 @router.get("/count", response_model=dict)
 def get_total_projects(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    total_count = db.query(Project).count()
+    # Cek apakah user adalah admin
+    is_admin = getattr(current_user, "is_admin", False) or getattr(current_user, "role", "") == "admin"
+
+    query = db.query(Project)
+
+    # Batasi hitungan hanya untuk project yang dibuat oleh user tersebut jika bukan admin
+    if not is_admin:
+        query = query.filter(Project.created_by == current_user.id)
+
+    total_count = query.count()
+    
     return {
         "status": "success",
         "total_projects": total_count
     }
 
+# @router.get("/home-dashboard", response_model=HomeDashboardResponse)
+# def get_home_dashboard_stats(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+#     # 1. Hitung total seluruh project
+#     total_projects = db.query(Project).count()
+
+#     # 2. Hitung rata-rata skor persepsi secara global
+#     avg_scores = (
+#         db.query(
+#             sa_func.avg(PerceptionPrediction.safety_score),
+#             sa_func.avg(PerceptionPrediction.beauty_score),
+#             sa_func.avg(PerceptionPrediction.comfort_score),
+#             sa_func.avg(PerceptionPrediction.uvi_score),
+#         )
+#         .first()
+#     )
+
+#     # 3. Amankan nilai jika hasilnya None (misal tabel masih kosong)
+#     safety = float(avg_scores[0]) if avg_scores and avg_scores[0] is not None else 0.0
+#     beauty = float(avg_scores[1]) if avg_scores and avg_scores[1] is not None else 0.0
+#     comfort = float(avg_scores[2]) if avg_scores and avg_scores[2] is not None else 0.0
+#     uvi = float(avg_scores[3]) if avg_scores and avg_scores[3] is not None else 0.0
+
+#     # Pastikan mengembalikan dictionary yang sesuai persis dengan struktur HomeDashboardResponse
+#     return {
+#         "status": "success",
+#         "total_projects": total_projects,
+#         "average_scores": {
+#             "safety_score": round(safety, 2),
+#             "beauty_score": round(beauty, 2),
+#             "comfort_score": round(comfort, 2),
+#             "uvi_score": round(uvi, 2),
+#         }
+#     }
 @router.get("/home-dashboard", response_model=HomeDashboardResponse)
 def get_home_dashboard_stats(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    # 1. Hitung total seluruh project
-    total_projects = db.query(Project).count()
+    # Cek apakah user adalah admin (sesuaikan pengecekan role/is_admin dengan model User kamu)
+    is_admin = getattr(current_user, "is_admin", False) or getattr(current_user, "role", "") == "admin"
 
-    # 2. Hitung rata-rata skor persepsi secara global
-    avg_scores = (
-        db.query(
-            sa_func.avg(PerceptionPrediction.safety_score),
-            sa_func.avg(PerceptionPrediction.beauty_score),
-            sa_func.avg(PerceptionPrediction.comfort_score),
-            sa_func.avg(PerceptionPrediction.uvi_score),
-        )
-        .first()
+    # 1. Hitung total project (berdasarkan pembuat jika bukan admin)
+    project_query = db.query(Project)
+    if not is_admin:
+        project_query = project_query.filter(Project.created_by == current_user.id)
+    total_projects = project_query.count()
+
+    # 2. Hitung rata-rata skor persepsi dengan join berjenjang ke StreetPhoto dan Project
+    avg_query = db.query(
+        sa_func.avg(PerceptionPrediction.safety_score),
+        sa_func.avg(PerceptionPrediction.beauty_score),
+        sa_func.avg(PerceptionPrediction.comfort_score),
+        sa_func.avg(PerceptionPrediction.uvi_score),
+    ).join(
+        StreetPhoto, PerceptionPrediction.photo_id == StreetPhoto.id
+    ).join(
+        Project, StreetPhoto.project_id == Project.id
     )
 
-    # 3. Amankan nilai jika hasilnya None (misal tabel masih kosong)
+    # Filter berdasarkan pembuat project jika bukan admin
+    if not is_admin:
+        avg_query = avg_query.filter(Project.created_by == current_user.id)
+
+    avg_scores = avg_query.first()
+
+    # 3. Amankan nilai jika hasilnya None (misal tabel kosong atau user belum punya data upload sama sekali -> otomatis 0.0)
     safety = float(avg_scores[0]) if avg_scores and avg_scores[0] is not None else 0.0
     beauty = float(avg_scores[1]) if avg_scores and avg_scores[1] is not None else 0.0
     comfort = float(avg_scores[2]) if avg_scores and avg_scores[2] is not None else 0.0
     uvi = float(avg_scores[3]) if avg_scores and avg_scores[3] is not None else 0.0
 
-    # Pastikan mengembalikan dictionary yang sesuai persis dengan struktur HomeDashboardResponse
     return {
         "status": "success",
         "total_projects": total_projects,
