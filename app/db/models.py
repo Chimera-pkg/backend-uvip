@@ -12,6 +12,8 @@ class User(Base):
     __tablename__ = "users"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(100), nullable=False)
+    profile_filename = Column(String(255))
+    profile_file_path = Column(String(255))
     email = Column(String(150), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
     # role = Column(ENUM(UserRole, name="user_role", create_type=False), nullable=False)

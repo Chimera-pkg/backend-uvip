@@ -36,6 +36,8 @@ $$ LANGUAGE plpgsql;
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) NOT NULL,
+    profile_filename VARCHAR(255),
+    profile_file_path VARCHAR(255),
     email VARCHAR(150) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     role user_role NOT NULL,

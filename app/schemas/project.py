@@ -94,6 +94,7 @@ class ProjectResponseWithStats(ProjectResponse):
     safety_score: Optional[float] = None
     comfort_score: Optional[float] = None
     uvi_score: Optional[float] = None
+    project_avatar: Optional[str] = None
 
 # 4. Paling Bawah: Paginasi (Menggunakan ProjectResponseWithStats yang sudah pasti terbaca di atas)
 class PaginatedProjectResponse(BaseModel):

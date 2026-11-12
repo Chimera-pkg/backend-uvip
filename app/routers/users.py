@@ -32,15 +32,17 @@
 #     db.refresh(user)
 #     return user
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 from typing import List
+import uuid
 from uuid import UUID
 
 from app.db.database import get_db
 from app.db.models import User
 from app.schemas.user import UserResponse, UserUpdate
 from app.routers.auth import get_current_user
+import os
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -150,3 +152,57 @@ def activate_user(
     db.refresh(target_user)
     
     return target_user
+
+PROFILE_UPLOAD_DIR = "uploads/profiles"
+os.makedirs(PROFILE_UPLOAD_DIR, exist_ok=True)
+
+@router.patch("/me/avatar", status_code=status.HTTP_200_OK)
+async def update_profile_avatar(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Endpoint untuk mengunggah atau memperbarui foto profil user yang sedang login.
+    """
+    # 1. Validasi Format File Gambar
+    allowed_extensions = {".jpg", ".jpeg", ".png", ".webp"}
+    file_ext = os.path.splitext(file.filename)[1].lower()
+    if file_ext not in allowed_extensions:
+        raise HTTPException(
+            status_code=400, 
+            detail="Format file tidak didukung! Gunakan .jpg, .jpeg, .png, atau .webp"
+        )
+
+    # 2. Hapus foto profil lama jika ada (opsional, agar storage server tidak penuh sampah)
+    if current_user.profile_file_path and os.path.exists(current_user.profile_file_path):
+        try:
+            os.remove(current_user.profile_file_path)
+        except Exception:
+            pass # Lewati jika file lama gagal dihapus
+
+    # 3. Buat nama file unik menggunakan UUID user / random UUID
+    saved_filename = f"user_{current_user.id}_{uuid.uuid4()}{file_ext}"
+    relative_file_path = os.path.join(PROFILE_UPLOAD_DIR, saved_filename).replace("\\", "/")
+
+    # 4. Simpan file fisik ke server
+    try:
+        contents = await file.read()
+        with open(relative_file_path, "wb") as f:
+            f.write(contents)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gagal menyimpan file foto profil: {str(e)}")
+
+    # 5. Update record database pada user yang sedang login
+    current_user.profile_filename = file.filename
+    current_user.profile_file_path = relative_file_path
+    
+    db.commit()
+    db.refresh(current_user)
+
+    return {
+        "status": "success",
+        "message": "Foto profil berhasil diperbarui",
+        "profile_filename": current_user.profile_filename,
+        "profile_file_path": current_user.profile_file_path
+    }

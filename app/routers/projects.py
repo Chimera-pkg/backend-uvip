@@ -52,6 +52,18 @@ def _compute_project_stats(project_id: UUID, db: Session) -> dict:
         .first()
     )
 
+    UPLOAD_DIR = "uploads/photos"
+    latest_photo = (
+        db.query(StreetPhoto.file_path)
+        .filter(
+            StreetPhoto.project_id == project_id,
+            StreetPhoto.file_path.ilike(f"{UPLOAD_DIR}/%")  # Memastikan hanya mengambil folder foto
+        )
+        .order_by(StreetPhoto.created_at.desc())  # Ambil yang paling baru
+        .first()
+    )
+    project_avatar = latest_photo[0] if latest_photo else None
+
     return {
         "photo_count": photo_count,
         "video_count": video_count,
@@ -59,6 +71,7 @@ def _compute_project_stats(project_id: UUID, db: Session) -> dict:
         "safety_score": float(scores[1]) if scores and scores[1] is not None else None,
         "comfort_score": float(scores[2]) if scores and scores[2] is not None else None,
         "uvi_score": float(scores[3]) if scores and scores[3] is not None else None,
+        "project_avatar": project_avatar
     }
 
 

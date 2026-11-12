@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional
+import uuid
 from uuid import UUID
 from datetime import datetime
 from app.db.enums import UserRole
@@ -18,6 +19,8 @@ class UserUpdate(BaseModel):
 class UserResponse(BaseModel):
     id: UUID
     name: str
+    profile_filename: Optional[str] = None
+    profile_file_path: Optional[str] = None
     email: EmailStr
     role: UserRole
     is_active: bool
