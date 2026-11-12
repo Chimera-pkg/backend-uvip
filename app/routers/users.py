@@ -40,10 +40,10 @@ from uuid import UUID
 
 from app.db.database import get_db
 from app.db.models import User
-from app.schemas.user import UserResponse, UserUpdate
+from app.schemas.user import UserResponse, UserUpdate, ChangePassword
 from app.routers.auth import get_current_user
 import os
-
+from app.core.security import hash_password, verify_password
 router = APIRouter(prefix="/users", tags=["Users"])
 
 # read all
@@ -60,16 +60,16 @@ def get_user(user_id: UUID, db: Session = Depends(get_db), current_user: User = 
     return user
 
 # update user
-@router.put("/{user_id}", response_model=UserResponse)
-def update_user(user_id: UUID, data: UserUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User tidak ditemukan")
-    for key, val in data.model_dump(exclude_unset=True).items():
-        setattr(user, key, val)
-    db.commit()
-    db.refresh(user)
-    return user
+# @router.put("/{user_id}", response_model=UserResponse)
+# def update_user(user_id: UUID, data: UserUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+#     user = db.query(User).filter(User.id == user_id).first()
+#     if not user:
+#         raise HTTPException(status_code=404, detail="User tidak ditemukan")
+#     for key, val in data.model_dump(exclude_unset=True).items():
+#         setattr(user, key, val)
+#     db.commit()
+#     db.refresh(user)
+#     return user
 
 # delete user
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -152,6 +152,64 @@ def activate_user(
     db.refresh(target_user)
     
     return target_user
+
+@router.patch("/me", response_model=UserResponse)
+def update_my_profile(
+    data: UserUpdate, 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Endpoint untuk user yang sedang login memperbarui datanya sendiri (username, email, name, dll).
+    """
+    update_data = data.model_dump(exclude_unset=True)
+
+    # Validasi unik email jika email ingin diubah
+    if "email" in update_data and update_data["email"] != current_user.email:
+        existing_email = db.query(User).filter(User.email == update_data["email"]).first()
+        if existing_email:
+            raise HTTPException(status_code=400, detail="Email sudah terdaftar oleh pengguna lain.")
+
+    # Validasi unik name jika name ingin diubah
+    # if "name" in update_data and update_data["name"] != current_user.name:
+    #     existing_name = db.query(User).filter(User.name == update_data["name"]).first()
+    #     if existing_name:
+    #         raise HTTPException(status_code=400, detail="name sudah digunakan oleh pengguna lain.")
+
+    # Terapkan perubahan secara dinamis
+    for key, val in update_data.items():
+        setattr(current_user, key, val)
+
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+
+@router.patch("/me/password", status_code=status.HTTP_200_OK)
+def change_password(
+    payload: ChangePassword,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Endpoint khusus untuk mengganti password user dengan memverifikasi password lama.
+    """
+    # 1. Gunakan current_user.password_hash (sesuai model User di auth.py)
+    if not verify_password(payload.old_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password lama salah."
+        )
+
+    # 2. Gunakan fungsi hash_password() dan simpan ke kolom password_hash
+    current_user.password_hash = hash_password(payload.new_password)
+    
+    db.commit()
+
+    return {
+        "status": "success",
+        "message": "Password berhasil diubah"
+    }
 
 PROFILE_UPLOAD_DIR = "uploads/profiles"
 os.makedirs(PROFILE_UPLOAD_DIR, exist_ok=True)

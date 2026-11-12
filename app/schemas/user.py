@@ -13,6 +13,7 @@ class UserCreate(BaseModel):
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
+    email: Optional[EmailStr] = None
     role: Optional[UserRole] = None
     is_active: Optional[bool] = None
 
@@ -29,3 +30,7 @@ class UserResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class ChangePassword(BaseModel):
+    old_password: str
+    new_password: str
