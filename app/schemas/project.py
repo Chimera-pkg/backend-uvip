@@ -86,6 +86,15 @@ class ProjectResponse(ProjectBase):
     class Config:
         from_attributes = True
 
+class ProjectCreatorResponse(BaseModel):
+    id: UUID
+    name: str
+    email: str
+    profile_file_path: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
 # 3. Level Berikutnya: Response dengan Statistik (Turunan dari ProjectResponse)
 class ProjectResponseWithStats(ProjectResponse):
     photo_count: int = 0
@@ -95,6 +104,7 @@ class ProjectResponseWithStats(ProjectResponse):
     comfort_score: Optional[float] = None
     uvi_score: Optional[float] = None
     project_avatar: Optional[str] = None
+    creator: Optional[ProjectCreatorResponse] = None
 
 # 4. Paling Bawah: Paginasi (Menggunakan ProjectResponseWithStats yang sudah pasti terbaca di atas)
 class PaginatedProjectResponse(BaseModel):

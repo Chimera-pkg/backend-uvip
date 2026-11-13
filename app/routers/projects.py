@@ -140,6 +140,60 @@ def create_project(data: ProjectCreate, db: Session = Depends(get_db), current_u
 #         "current_page": page,
 #         "data": result_data
 #     }
+# @router.get("/", response_model=PaginatedProjectResponse)
+# def list_projects(
+#     page: int = Query(1, ge=1, description="Nomor halaman yang ingin diakses"),
+#     size: int = Query(10, ge=1, le=100, description="Jumlah data maksimal per halaman"),
+#     search: Optional[str] = Query(None, description="Cari project berdasarkan nama"),
+#     db: Session = Depends(get_db), 
+#     current_user: User = Depends(get_current_user)
+# ):
+#     # Cek apakah user adalah admin (sesuaikan atribut role/is_admin dengan model User kamu)
+#     is_admin = getattr(current_user, "is_admin", False) or getattr(current_user, "role", "") == "admin"
+
+#     base_query = db.query(Project)
+
+#     # Terapkan filter kepemilikan project jika bukan admin
+#     if not is_admin:
+#         base_query = base_query.filter(Project.created_by == current_user.id)
+
+#     # (Opsional) Tambahan filter pencarian nama jika dibutuhkan oleh frontend
+#     if search:
+#         base_query = base_query.filter(Project.name.ilike(f"%{search}%"))
+
+#     # Hitung total data keseluruhan setelah filter
+#     total_data = base_query.count()
+    
+#     # Hitung total halaman (minimal 1 halaman meskipun data kosong)
+#     total_pages = ceil(total_data / size) if total_data > 0 else 1
+    
+#     # Tentukan offset (skip) untuk pagination database
+#     skip = (page - 1) * size
+
+#     # Ambil data project sesuai halaman dan batasan size
+#     projects = (
+#         base_query
+#         .order_by(sa_func.coalesce(Project.last_opened_at, Project.created_at).desc())
+#         .offset(skip)
+#         .limit(size)
+#         .all()
+#     )
+
+#     # Bungkus data project ke dalam format ResponseWithStats
+#     result_data = []
+#     for project in projects:
+#         stats = _compute_project_stats(project.id, db)
+#         result_data.append(ProjectResponseWithStats(
+#             **ProjectResponse.model_validate(project).model_dump(),
+#             **stats,
+#         ))
+
+#     return {
+#         "total_data": total_data,
+#         "total_pages": total_pages,
+#         "current_page": page,
+#         "data": result_data
+#     }
 @router.get("/", response_model=PaginatedProjectResponse)
 def list_projects(
     page: int = Query(1, ge=1, description="Nomor halaman yang ingin diakses"),
@@ -148,30 +202,25 @@ def list_projects(
     db: Session = Depends(get_db), 
     current_user: User = Depends(get_current_user)
 ):
-    # Cek apakah user adalah admin (sesuaikan atribut role/is_admin dengan model User kamu)
     is_admin = getattr(current_user, "is_admin", False) or getattr(current_user, "role", "") == "admin"
 
-    base_query = db.query(Project)
+    # Lakukan explicit join ke tabel User berdasarkan Project.created_by
+    base_query = db.query(Project, User).outerjoin(
+        User, Project.created_by == User.id
+    )
 
-    # Terapkan filter kepemilikan project jika bukan admin
     if not is_admin:
         base_query = base_query.filter(Project.created_by == current_user.id)
 
-    # (Opsional) Tambahan filter pencarian nama jika dibutuhkan oleh frontend
     if search:
         base_query = base_query.filter(Project.name.ilike(f"%{search}%"))
 
-    # Hitung total data keseluruhan setelah filter
     total_data = base_query.count()
-    
-    # Hitung total halaman (minimal 1 halaman meskipun data kosong)
     total_pages = ceil(total_data / size) if total_data > 0 else 1
-    
-    # Tentukan offset (skip) untuk pagination database
     skip = (page - 1) * size
 
-    # Ambil data project sesuai halaman dan batasan size
-    projects = (
+    # Hasil query sekarang berupa list of tuple: (Project, User)
+    results = (
         base_query
         .order_by(sa_func.coalesce(Project.last_opened_at, Project.created_at).desc())
         .offset(skip)
@@ -179,13 +228,25 @@ def list_projects(
         .all()
     )
 
-    # Bungkus data project ke dalam format ResponseWithStats
     result_data = []
-    for project in projects:
+    # Looping tuple hasil join
+    for project, creator in results:
         stats = _compute_project_stats(project.id, db)
+        
+        # Siapkan dictionary untuk data creator jika ada
+        creator_data = None
+        if creator:
+            creator_data = {
+                "id": creator.id,
+                "name": creator.name,
+                "email": creator.email,
+                "profile_file_path": getattr(creator, "profile_file_path", None)
+            }
+
         result_data.append(ProjectResponseWithStats(
             **ProjectResponse.model_validate(project).model_dump(),
             **stats,
+            creator=creator_data # Sisipkan data creator ke response
         ))
 
     return {
@@ -302,17 +363,72 @@ def get_home_dashboard_stats(db: Session = Depends(get_db), current_user: User =
 
 
 # 3. GET BY ID (dengan stats)
-@router.get("/{project_id}", response_model=ProjectResponseWithStats)
-def get_project(project_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    project = _get_project_or_404(project_id, db)
-    stats = _compute_project_stats(project.id, db)
+# @router.get("/{project_id}", response_model=ProjectResponseWithStats)
+# def get_project(project_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+#     project = _get_project_or_404(project_id, db)
+#     stats = _compute_project_stats(project.id, db)
 
+#     project.last_opened_at = datetime.now(timezone.utc)
+#     db.commit()
+#     db.refresh(project)
+#     return ProjectResponseWithStats(
+#         **ProjectResponse.model_validate(project).model_dump(),
+#         **stats,
+#     )
+@router.get("/{project_id}", response_model=ProjectResponseWithStats)
+def get_project(
+    project_id: UUID, 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
+    # Cek hak akses admin
+    is_admin = getattr(current_user, "is_admin", False) or getattr(current_user, "role", "") == "admin"
+
+    # 1. Query Project sekaligus join ke tabel User (creator)
+    result = (
+        db.query(Project, User)
+        .outerjoin(User, Project.created_by == User.id)
+        .filter(Project.id == project_id)
+        .first()
+    )
+
+    # 2. Jika project tidak ditemukan di database
+    if not result:
+        raise HTTPException(status_code=404, detail="Project tidak ditemukan")
+    
+    project, creator = result
+
+    # 3. Validasi Hak Akses Kepemilikan (Penting!)
+    # Jika bukan admin DAN bukan pembuat project tersebut, tolak aksesnya
+    if not is_admin and project.created_by != current_user.id:
+        raise HTTPException(
+            status_code=403, 
+            detail="Anda tidak memiliki izin untuk mengakses project ini"
+        )
+
+    # 4. Update waktu terakhir dibuka
     project.last_opened_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(project)
+
+    # 5. Hitung statistik project
+    stats = _compute_project_stats(project.id, db)
+
+    # 6. Siapkan dictionary data creator
+    creator_data = None
+    if creator:
+        creator_data = {
+            "id": creator.id,
+            "name": creator.name,
+            "email": creator.email,
+            "profile_file_path": getattr(creator, "profile_file_path", None)
+        }
+
+    # 7. Gabungkan semua dan kembalikan response
     return ProjectResponseWithStats(
         **ProjectResponse.model_validate(project).model_dump(),
         **stats,
+        creator=creator_data
     )
 
 # 4. UPDATE
