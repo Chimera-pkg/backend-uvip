@@ -1,37 +1,3 @@
-# from fastapi import APIRouter, Depends, HTTPException
-# from sqlalchemy.orm import Session
-# from typing import List
-# from uuid import UUID
-
-# from app.db.database import get_db
-# from app.db.models import User
-# from app.schemas.user import UserResponse, UserUpdate
-# from app.routers.auth import get_current_user
-
-# router = APIRouter(prefix="/users", tags=["Users"])
-
-# @router.get("/", response_model=List[UserResponse])
-# def get_all_users(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-#     return db.query(User).all()
-
-# @router.get("/{user_id}", response_model=UserResponse)
-# def get_user(user_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-#     user = db.query(User).filter(User.id == user_id).first()
-#     if not user:
-#         raise HTTPException(status_code=404, detail="User tidak ditemukan")
-#     return user
-
-# @router.put("/{user_id}", response_model=UserResponse)
-# def update_user(user_id: UUID, data: UserUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-#     user = db.query(User).filter(User.id == user_id).first()
-#     if not user:
-#         raise HTTPException(status_code=404, detail="User tidak ditemukan")
-#     for key, val in data.model_dump(exclude_unset=True).items():
-#         setattr(user, key, val)
-#     db.commit()
-#     db.refresh(user)
-#     return user
-
 from fastapi import APIRouter, Depends, HTTPException, status, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 from typing import List
@@ -40,16 +6,59 @@ from uuid import UUID
 
 from app.db.database import get_db
 from app.db.models import User
-from app.schemas.user import UserResponse, UserUpdate, ChangePassword
+from app.schemas.user import UserResponse, UserUpdate, ChangePassword, PaginatedUserResponse
 from app.routers.auth import get_current_user
 import os
 from app.core.security import hash_password, verify_password
+
+from math import ceil
+from typing import Optional
+from fastapi import Query
+from sqlalchemy import or_
+
 router = APIRouter(prefix="/users", tags=["Users"])
 
 # read all
-@router.get("/", response_model=List[UserResponse])
-def get_all_users(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    return db.query(User).all()
+# @router.get("/", response_model=List[UserResponse])
+# def get_all_users(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+#     return db.query(User).all()
+@router.get("/", response_model=PaginatedUserResponse)
+def get_all_users(
+    page: int = Query(1, ge=1, description="Nomor halaman yang ingin diakses"),
+    size: int = Query(10, ge=1, le=100, description="Jumlah data maksimal per halaman"),
+    search: Optional[str] = Query(None, description="Cari user berdasarkan nama atau email"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    base_query = db.query(User)
+
+    # Opsional: filter pencarian by name atau email
+    if search:
+        base_query = base_query.filter(
+            or_(
+                User.name.ilike(f"%{search}%"),
+                User.email.ilike(f"%{search}%"),
+            )
+        )
+
+    total_data = base_query.count()
+    total_pages = ceil(total_data / size) if total_data > 0 else 1
+    skip = (page - 1) * size
+
+    users = (
+        base_query
+        .order_by(User.created_at.desc())  # Sesuaikan jika tidak ada kolom created_at, misal User.name.asc()
+        .offset(skip)
+        .limit(size)
+        .all()
+    )
+
+    return {
+        "total_data": total_data,
+        "total_pages": total_pages,
+        "current_page": page,
+        "data": users,
+    }
 
 # read by id
 @router.get("/{user_id}", response_model=UserResponse)

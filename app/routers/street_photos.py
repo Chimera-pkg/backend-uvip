@@ -259,15 +259,19 @@ def list_photos(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # base_query = db.query(StreetPhoto).filter(
+    # base_query = db.query(StreetPhoto, PerceptionPrediction, Project).outerjoin(
+    #     PerceptionPrediction, StreetPhoto.id == PerceptionPrediction.photo_id
+    # ).outerjoin(
+    #     Project, StreetPhoto.project_id == Project.id
+    # ).filter(
     #     StreetPhoto.file_path.ilike(f"{UPLOAD_DIR}/%")
     # )
-    base_query = db.query(StreetPhoto, PerceptionPrediction, Project).outerjoin(
-        PerceptionPrediction, StreetPhoto.id == PerceptionPrediction.photo_id
-    ).outerjoin(
-        Project, StreetPhoto.project_id == Project.id
-    ).filter(
-        StreetPhoto.file_path.ilike(f"{UPLOAD_DIR}/%")
+    base_query = (
+        db.query(StreetPhoto, PerceptionPrediction, Project, User)
+        .outerjoin(PerceptionPrediction, StreetPhoto.id == PerceptionPrediction.photo_id)
+        .outerjoin(Project, StreetPhoto.project_id == Project.id)
+        .outerjoin(User, StreetPhoto.uploaded_by == User.id)
+        .filter(StreetPhoto.file_path.ilike(f"{UPLOAD_DIR}/%"))
     )
 
     if project_id:
@@ -285,13 +289,14 @@ def list_photos(
 
     # Mapping hasil query ke dalam bentuk list dictionary atau objek yang sesuai dengan StreetPhotoResponse
     formatted_data = []
-    for photo, prediction, project in results:
+    for photo, prediction, project, uploader in results:
         # Ubah objek StreetPhoto menjadi dictionary dasar
         photo_dict = {
             "id": photo.id,
             "project_id": photo.project_id,
             "mission_id": photo.mission_id,
             "uploaded_by": photo.uploaded_by,
+            "uploader": uploader if uploader else None,
             "source": photo.source,
             "original_filename": photo.original_filename,
             "file_path": photo.file_path,
@@ -523,8 +528,6 @@ def execute_full_cascade_delete_photo(photo_id: UUID, db: Session) -> None:
 # export excel
 logger = logging.getLogger(__name__)
 
-# router = APIRouter(prefix="/street-photos", tags=["Street Photos"])
-
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 UPLOAD_DIR = "uploads/photos"
 # LOCAL_BASE_URL = "http://127.0.0.1:8000"
@@ -590,131 +593,6 @@ def _save_temp_png(pil_img: PILImage.Image) -> str:
     tmp.close()
     return tmp.name
 
-
-# @router.get(
-#     "/export/export-photos-excel",
-#     summary="",
-# )
-# def export_street_photos_excel(
-#     project_id: Optional[UUID] = Query(None),
-#     db: Session = Depends(get_db),
-#     current_user: User = Depends(get_current_user),
-# ):
-#     base_query = db.query(StreetPhoto).filter(
-#         StreetPhoto.file_path.ilike(f"{UPLOAD_DIR}/%")
-#     )
-#     if project_id:
-#         base_query = base_query.filter(StreetPhoto.project_id == project_id)
-
-#     photos = base_query.order_by(StreetPhoto.created_at.desc()).all()
-#     if not photos:
-#         raise HTTPException(status_code=404, detail="Tidak ada data foto untuk diexport.")
-
-#     wb = Workbook()
-#     ws = wb.active
-#     ws.title = "Laporan Foto & Analisis"
-
-#     headers = [
-#         "No", "Foto Asli", "Foto Overlay AI", "Latitude", "Longitude", "Waktu Tangkap",
-#         "Vegetasi (%)", "Bangunan (%)", "Jalan (%)", "Langit (%)",
-#         "Walkability Ratio", "Visual Clutter", "Beauty Score",
-#         "Safety Score", "Comfort Score", "UVI Score",
-#     ]
-#     ws.append(headers)
-
-#     widths = {1: 6, 2: 18, 3: 18, 4: 15, 5: 15, 6: 22}
-#     for col, w in widths.items():
-#         ws.column_dimensions[get_column_letter(col)].width = w
-
-#     # Simpan path temp untuk cleanup nanti
-#     temp_files: List[str] = []
-
-#     try:
-#         for index, raw_photo in enumerate(photos, start=2):
-#             segmentation = db.query(SegmentationResult).filter(
-#                 SegmentationResult.photo_id == raw_photo.id
-#             ).first()
-#             prediction = db.query(PerceptionPrediction).filter(
-#                 PerceptionPrediction.photo_id == raw_photo.id
-#             ).first()
-
-#             ws.row_dimensions[index].height = IMG_H * 0.75 + 5
-
-#             ws.cell(row=index, column=1, value=index - 1)
-#             ws.cell(row=index, column=4, value=raw_photo.latitude)
-#             ws.cell(row=index, column=5, value=raw_photo.longitude)
-#             ws.cell(row=index, column=6, value=str(raw_photo.captured_at) if raw_photo.captured_at else "")
-
-#             ws.cell(row=index, column=7, value=segmentation.vegetation_pct if segmentation else None)
-#             ws.cell(row=index, column=8, value=segmentation.building_pct if segmentation else None)
-#             ws.cell(row=index, column=9, value=segmentation.road_pct if segmentation else None)
-#             ws.cell(row=index, column=10, value=segmentation.sky_pct if segmentation else None)
-#             ws.cell(row=index, column=11, value=segmentation.walkability_ratio if segmentation else None)
-#             ws.cell(row=index, column=12, value=segmentation.visual_clutter_index if segmentation else None)
-#             ws.cell(row=index, column=13, value=prediction.beauty_score if prediction else None)
-#             ws.cell(row=index, column=14, value=prediction.safety_score if prediction else None)
-#             ws.cell(row=index, column=15, value=prediction.comfort_score if prediction else None)
-#             ws.cell(row=index, column=16, value=prediction.uvi_score if prediction else None)
-
-#             # === FOTO ASLI ===
-#             if raw_photo.file_path:
-#                 pil_img = _load_local_image(raw_photo.file_path)
-#                 if pil_img:
-#                     try:
-#                         tmp_path = _save_temp_png(pil_img)
-#                         temp_files.append(tmp_path)
-#                         xl_img = OpenpyxlImage(tmp_path)
-#                         xl_img.width = IMG_W
-#                         xl_img.height = IMG_H
-#                         ws.add_image(xl_img, f"B{index}")
-#                     except Exception as e:
-#                         logger.exception(f"[EXPORT] add_image lokal gagal: {e}")
-#                         ws.cell(row=index, column=2, value="Gagal render")
-#                 else:
-#                     rel = raw_photo.file_path.lstrip("/\\").replace("\\", "/")
-#                     ws.cell(row=index, column=2, value=f"{LOCAL_BASE_URL}/{rel}")
-#             else:
-#                 ws.cell(row=index, column=2, value="Path kosong")
-
-#             # === FOTO OVERLAY AI ===
-#             if segmentation and segmentation.segmentation_overlay_url:
-#                 clean_path = segmentation.segmentation_overlay_url.lstrip("/")
-#                 overlay_url = f"{AI_BASE_URL}/{clean_path}"
-#                 pil_overlay = _load_remote_image(overlay_url)
-#                 if pil_overlay:
-#                     try:
-#                         tmp_path = _save_temp_png(pil_overlay)
-#                         temp_files.append(tmp_path)
-#                         xl_img = OpenpyxlImage(tmp_path)
-#                         xl_img.width = IMG_W
-#                         xl_img.height = IMG_H
-#                         ws.add_image(xl_img, f"C{index}")
-#                     except Exception as e:
-#                         logger.exception(f"[EXPORT] add_image overlay gagal: {e}")
-#                         ws.cell(row=index, column=3, value="Gagal render")
-#                 else:
-#                     ws.cell(row=index, column=3, value="Gagal ambil overlay")
-#             else:
-#                 ws.cell(row=index, column=3, value="Belum ada overlay")
-
-#         output = io.BytesIO()
-#         wb.save(output)
-#         output.seek(0)
-
-#     finally:
-#         # Cleanup semua file temp
-#         for p in temp_files:
-#             try:
-#                 os.remove(p)
-#             except OSError:
-#                 pass
-
-#     filename = "Laporan_Street_Photos_Lengkap.xlsx"
-#     return StreamingResponse(
-#         output,
-#         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-#         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-#     )
 @router.get(
     "/export/export-photos-excel",
     summary="",
@@ -724,9 +602,15 @@ def export_street_photos_excel(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    base_query = db.query(StreetPhoto).filter(
-        StreetPhoto.file_path.ilike(f"{UPLOAD_DIR}/%")
+    # base_query = db.query(StreetPhoto).filter(
+    #     StreetPhoto.file_path.ilike(f"{UPLOAD_DIR}/%")
+    # )
+    base_query = (
+        db.query(StreetPhoto, Project)
+        .outerjoin(Project, StreetPhoto.project_id == Project.id)
+        .filter(StreetPhoto.file_path.ilike(f"{UPLOAD_DIR}/%"))
     )
+
     if project_id:
         base_query = base_query.filter(StreetPhoto.project_id == project_id)
 
@@ -739,8 +623,15 @@ def export_street_photos_excel(
     ws = wb.active
     ws.title = "Laporan Foto & Analisis"
 
+    # headers = [
+    #     "No", "Foto Asli", "Foto Overlay AI", "Nama Foto",
+    #     "Latitude", "Longitude", "Waktu Tangkap",
+    #     "Vegetasi (%)", "Bangunan (%)", "Jalan (%)", "Langit (%)",
+    #     "Walkability Ratio", "Visual Clutter", "Beauty Score",
+    #     "Safety Score", "Comfort Score", "UVI Score",
+    # ]
     headers = [
-        "No", "Foto Asli", "Foto Overlay AI", "Nama Foto",
+        "No", "Foto Asli", "Project", "Foto Overlay AI", "Nama Foto",
         "Latitude", "Longitude", "Waktu Tangkap",
         "Vegetasi (%)", "Bangunan (%)", "Jalan (%)", "Langit (%)",
         "Walkability Ratio", "Visual Clutter", "Beauty Score",
@@ -749,14 +640,42 @@ def export_street_photos_excel(
     ws.append(headers)
 
     # ← TAMBAH KOLOM D
-    widths = {1: 6, 2: 18, 3: 18, 4: 25, 5: 15, 6: 15, 7: 22}
+    # widths = {1: 6, 2: 18, 3: 18, 4: 25, 5: 15, 6: 15, 7: 22}
+    widths = {1: 6, 2: 18, 3: 22, 4: 18, 5: 25, 6: 15, 7: 15, 8: 22}
     for col, w in widths.items():
         ws.column_dimensions[get_column_letter(col)].width = w
 
     temp_files: List[str] = []
 
     try:
-        for index, raw_photo in enumerate(photos, start=2):
+        # for index, raw_photo in enumerate(photos, start=2):
+        #     segmentation = db.query(SegmentationResult).filter(
+        #         SegmentationResult.photo_id == raw_photo.id
+        #     ).first()
+        #     prediction = db.query(PerceptionPrediction).filter(
+        #         PerceptionPrediction.photo_id == raw_photo.id
+        #     ).first()
+
+        #     ws.row_dimensions[index].height = IMG_H * 0.75 + 5
+
+        #     ws.cell(row=index, column=1, value=index - 1)
+        #     # ← KOLOM BARU: NAMA FOTO
+        #     ws.cell(row=index, column=4, value=raw_photo.original_filename)
+        #     ws.cell(row=index, column=5, value=raw_photo.latitude)
+        #     ws.cell(row=index, column=6, value=raw_photo.longitude)
+        #     ws.cell(row=index, column=7, value=str(raw_photo.captured_at) if raw_photo.captured_at else "")
+
+        #     ws.cell(row=index, column=8, value=segmentation.vegetation_pct if segmentation else None)
+        #     ws.cell(row=index, column=9, value=segmentation.building_pct if segmentation else None)
+        #     ws.cell(row=index, column=10, value=segmentation.road_pct if segmentation else None)
+        #     ws.cell(row=index, column=11, value=segmentation.sky_pct if segmentation else None)
+        #     ws.cell(row=index, column=12, value=segmentation.walkability_ratio if segmentation else None)
+        #     ws.cell(row=index, column=13, value=segmentation.visual_clutter_index if segmentation else None)
+        #     ws.cell(row=index, column=14, value=prediction.beauty_score if prediction else None)
+        #     ws.cell(row=index, column=15, value=prediction.safety_score if prediction else None)
+        #     ws.cell(row=index, column=16, value=prediction.comfort_score if prediction else None)
+        #     ws.cell(row=index, column=17, value=prediction.uvi_score if prediction else None)
+        for index, (raw_photo, project) in enumerate(photos, start=2):
             segmentation = db.query(SegmentationResult).filter(
                 SegmentationResult.photo_id == raw_photo.id
             ).first()
@@ -767,22 +686,22 @@ def export_street_photos_excel(
             ws.row_dimensions[index].height = IMG_H * 0.75 + 5
 
             ws.cell(row=index, column=1, value=index - 1)
-            # ← KOLOM BARU: NAMA FOTO
-            ws.cell(row=index, column=4, value=raw_photo.original_filename)
-            ws.cell(row=index, column=5, value=raw_photo.latitude)
-            ws.cell(row=index, column=6, value=raw_photo.longitude)
-            ws.cell(row=index, column=7, value=str(raw_photo.captured_at) if raw_photo.captured_at else "")
+            ws.cell(row=index, column=3, value=project.name if project else "")
+            ws.cell(row=index, column=5, value=raw_photo.original_filename)
+            ws.cell(row=index, column=6, value=raw_photo.latitude)
+            ws.cell(row=index, column=7, value=raw_photo.longitude)
+            ws.cell(row=index, column=8, value=str(raw_photo.captured_at) if raw_photo.captured_at else "")
 
-            ws.cell(row=index, column=8, value=segmentation.vegetation_pct if segmentation else None)
-            ws.cell(row=index, column=9, value=segmentation.building_pct if segmentation else None)
-            ws.cell(row=index, column=10, value=segmentation.road_pct if segmentation else None)
-            ws.cell(row=index, column=11, value=segmentation.sky_pct if segmentation else None)
-            ws.cell(row=index, column=12, value=segmentation.walkability_ratio if segmentation else None)
-            ws.cell(row=index, column=13, value=segmentation.visual_clutter_index if segmentation else None)
-            ws.cell(row=index, column=14, value=prediction.beauty_score if prediction else None)
-            ws.cell(row=index, column=15, value=prediction.safety_score if prediction else None)
-            ws.cell(row=index, column=16, value=prediction.comfort_score if prediction else None)
-            ws.cell(row=index, column=17, value=prediction.uvi_score if prediction else None)
+            ws.cell(row=index, column=9, value=segmentation.vegetation_pct if segmentation else None)
+            ws.cell(row=index, column=10, value=segmentation.building_pct if segmentation else None)
+            ws.cell(row=index, column=11, value=segmentation.road_pct if segmentation else None)
+            ws.cell(row=index, column=12, value=segmentation.sky_pct if segmentation else None)
+            ws.cell(row=index, column=13, value=segmentation.walkability_ratio if segmentation else None)
+            ws.cell(row=index, column=14, value=segmentation.visual_clutter_index if segmentation else None)
+            ws.cell(row=index, column=15, value=prediction.beauty_score if prediction else None)
+            ws.cell(row=index, column=16, value=prediction.safety_score if prediction else None)
+            ws.cell(row=index, column=17, value=prediction.comfort_score if prediction else None)
+            ws.cell(row=index, column=18, value=prediction.uvi_score if prediction else None)
 
             # === FOTO ASLI ===
             if raw_photo.file_path:
@@ -816,14 +735,14 @@ def export_street_photos_excel(
                         xl_img = OpenpyxlImage(tmp_path)
                         xl_img.width = IMG_W
                         xl_img.height = IMG_H
-                        ws.add_image(xl_img, f"C{index}")
+                        ws.add_image(xl_img, f"D{index}")
                     except Exception as e:
                         logger.exception(f"[EXPORT] add_image overlay gagal: {e}")
-                        ws.cell(row=index, column=3, value="Gagal render")
+                        ws.cell(row=index, column=4, value="Gagal render")
                 else:
-                    ws.cell(row=index, column=3, value="Gagal ambil overlay")
+                    ws.cell(row=index, column=4, value="Gagal ambil overlay")
             else:
-                ws.cell(row=index, column=3, value="Belum ada overlay")
+                ws.cell(row=index, column=4, value="Belum ada overlay")
 
         output = io.BytesIO()
         wb.save(output)

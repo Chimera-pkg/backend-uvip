@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import Optional, List
 import uuid
 from uuid import UUID
 from datetime import datetime
@@ -34,3 +34,12 @@ class UserResponse(BaseModel):
 class ChangePassword(BaseModel):
     old_password: str
     new_password: str
+
+class PaginatedUserResponse(BaseModel):
+    total_data: int
+    total_pages: int
+    current_page: int
+    data: List[UserResponse]
+
+    class Config:
+        from_attributes = True

@@ -46,11 +46,21 @@ class StreetPhotoUpdate(BaseModel):
     error_message: Optional[str] = None
     captured_at: Optional[datetime] = None
 
+class PhotoUploaderResponse(BaseModel):
+    id: UUID
+    name: str
+    email: str
+    profile_file_path: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
 class StreetPhotoResponse(BaseModel):
     id: UUID
     project_id: Optional[UUID]
     mission_id: Optional[UUID]
     uploaded_by: UUID
+    uploader: Optional[PhotoUploaderResponse] = None
     source: PhotoSource
     original_filename: Optional[str]
     file_path: str
