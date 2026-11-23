@@ -251,6 +251,7 @@ def _normalize_pct(value: Optional[float], is_ratio: bool = False) -> float:
 
 @router.get("/visual-quality-report", response_model=VisualQualityReportResponse)
 def get_visual_quality_report(
+    project_id: Optional[UUID] = Query(None, description="Filter UVI rata-rata berdasarkan project"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -270,6 +271,9 @@ def get_visual_quality_report(
     )
     if not is_admin:
         uvi_query = uvi_query.filter(Project.created_by == current_user.id)
+
+    if project_id:
+        uvi_query = uvi_query.filter(Project.id == project_id)
 
     raw_avg_uvi = uvi_query.scalar()
     average_uvi = round(float(raw_avg_uvi), 2) if raw_avg_uvi is not None else 0.0

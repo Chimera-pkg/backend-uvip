@@ -167,12 +167,19 @@ def list_videos(
     # base_query = db.query(StreetPhoto).filter(
     #     StreetPhoto.file_path.ilike(f"{VIDEO_UPLOAD_DIR}/%")
     # )
-    base_query = db.query(StreetPhoto, PerceptionPrediction, Project).outerjoin(
-        PerceptionPrediction, StreetPhoto.id == PerceptionPrediction.photo_id
-    ).outerjoin(
-        Project, StreetPhoto.project_id == Project.id
-    ).filter(
-        StreetPhoto.file_path.ilike(f"{VIDEO_UPLOAD_DIR}/%")
+    # base_query = db.query(StreetPhoto, PerceptionPrediction, Project).outerjoin(
+    #     PerceptionPrediction, StreetPhoto.id == PerceptionPrediction.photo_id
+    # ).outerjoin(
+    #     Project, StreetPhoto.project_id == Project.id
+    # ).filter(
+    #     StreetPhoto.file_path.ilike(f"{VIDEO_UPLOAD_DIR}/%")
+    # )
+    base_query = (
+        db.query(StreetPhoto, PerceptionPrediction, Project, User)
+        .outerjoin(PerceptionPrediction, StreetPhoto.id == PerceptionPrediction.photo_id)
+        .outerjoin(Project, StreetPhoto.project_id == Project.id)
+        .outerjoin(User, StreetPhoto.uploaded_by == User.id)
+        .filter(StreetPhoto.file_path.ilike(f"{VIDEO_UPLOAD_DIR}/%"))
     )
 
     if project_id:
@@ -188,13 +195,14 @@ def list_videos(
     results = base_query.order_by(StreetPhoto.created_at.desc()).offset(skip).limit(size).all()
 
     formatted_data = []
-    for photo, prediction, project in results:
+    for photo, prediction, project, uploader in results:
         # Ubah objek StreetPhoto menjadi dictionary dasar
         photo_dict = {
             "id": photo.id,
             "project_id": photo.project_id,
             "mission_id": photo.mission_id,
             "uploaded_by": photo.uploaded_by,
+            "uploader": uploader if uploader else None,
             "source": photo.source,
             "original_filename": photo.original_filename,
             "file_path": photo.file_path,
