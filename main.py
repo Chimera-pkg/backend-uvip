@@ -17,9 +17,24 @@ app = FastAPI(
 )
 
 # cors middleware
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["*"],
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
+origins = [
+    "http://localhost:3000",
+    "http://80.241.214.39:3000",
+    "http://admin.urbanlens.id",
+    "https://admin.urbanlens.id",
+]
+
+# cors middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
