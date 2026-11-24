@@ -26,6 +26,7 @@ app = FastAPI(
 # )
 origins = [
     "http://localhost:3000",
+    "http://localhost:5173",
     "http://80.241.214.39:3000",
     "http://admin.urbanlens.id",
     "https://admin.urbanlens.id",
@@ -35,6 +36,7 @@ origins = [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=r"^http://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
