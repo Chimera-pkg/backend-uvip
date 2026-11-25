@@ -631,7 +631,7 @@ def export_street_photos_excel(
     #     "Safety Score", "Comfort Score", "UVI Score",
     # ]
     headers = [
-        "No", "Foto Asli", "Project", "Foto Overlay AI", "Nama Foto",
+        "No", "Foto Asli", "Foto Overlay AI", "Project", "Nama Foto",
         "Latitude", "Longitude", "Waktu Tangkap",
         "Vegetasi (%)", "Bangunan (%)", "Jalan (%)", "Langit (%)",
         "Walkability Ratio", "Visual Clutter", "Beauty Score",
