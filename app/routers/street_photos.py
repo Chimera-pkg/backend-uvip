@@ -532,7 +532,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 UPLOAD_DIR = "uploads/photos"
 # LOCAL_BASE_URL = "http://127.0.0.1:8000"
 LOCAL_BASE_URL = "http://80.241.214.39"
-AI_BASE_URL = "https://trends-womens-catherine-approval.trycloudflare.com"
+AI_BASE_URL = "https://auctions-chemicals-latitude-typing.trycloudflare.com"
 IMG_W, IMG_H = 90, 90
 
 
@@ -641,7 +641,7 @@ def export_street_photos_excel(
 
     # ← TAMBAH KOLOM D
     # widths = {1: 6, 2: 18, 3: 18, 4: 25, 5: 15, 6: 15, 7: 22}
-    widths = {1: 6, 2: 18, 3: 22, 4: 18, 5: 25, 6: 15, 7: 15, 8: 22}
+    widths = {1: 6, 2: 18, 3: 18, 4: 22, 5: 25, 6: 15, 7: 15, 8: 22}
     for col, w in widths.items():
         ws.column_dimensions[get_column_letter(col)].width = w
 
@@ -686,7 +686,7 @@ def export_street_photos_excel(
             ws.row_dimensions[index].height = IMG_H * 0.75 + 5
 
             ws.cell(row=index, column=1, value=index - 1)
-            ws.cell(row=index, column=3, value=project.name if project else "")
+            ws.cell(row=index, column=4, value=project.name if project else "")
             ws.cell(row=index, column=5, value=raw_photo.original_filename)
             ws.cell(row=index, column=6, value=raw_photo.latitude)
             ws.cell(row=index, column=7, value=raw_photo.longitude)
@@ -738,11 +738,11 @@ def export_street_photos_excel(
                         ws.add_image(xl_img, f"D{index}")
                     except Exception as e:
                         logger.exception(f"[EXPORT] add_image overlay gagal: {e}")
-                        ws.cell(row=index, column=4, value="Gagal render")
+                        ws.cell(row=index, column=3, value="Gagal render")
                 else:
-                    ws.cell(row=index, column=4, value="Gagal ambil overlay")
+                    ws.cell(row=index, column=3, value="Gagal ambil overlay")
             else:
-                ws.cell(row=index, column=4, value="Belum ada overlay")
+                ws.cell(row=index, column=3, value="Belum ada overlay")
 
         output = io.BytesIO()
         wb.save(output)
