@@ -735,7 +735,7 @@ def export_street_photos_excel(
                         xl_img = OpenpyxlImage(tmp_path)
                         xl_img.width = IMG_W
                         xl_img.height = IMG_H
-                        ws.add_image(xl_img, f"D{index}")
+                        ws.add_image(xl_img, f"C{index}")
                     except Exception as e:
                         logger.exception(f"[EXPORT] add_image overlay gagal: {e}")
                         ws.cell(row=index, column=3, value="Gagal render")
